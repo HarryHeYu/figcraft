@@ -1,0 +1,8 @@
+{
+  "operations": [
+    {"op": "set_style", "target": "forget_head", "style": {"fill": "#FCE4CF", "stroke": "#C17C43"}},
+    {"op": "set_style", "target": "retain_head", "style": {"fill": "#E8F0FE", "stroke": "#4275C4"}},
+    {"op": "add_group", "group": {"id": "forget_retain", "children": ["forget_head", "retain_head"], "label": "Unlearning Heads"}}
+  ],
+  "expected_revision": 3
+}

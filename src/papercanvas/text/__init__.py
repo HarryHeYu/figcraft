@@ -13,7 +13,7 @@ from papercanvas.text.text_layout import (
     TextLayout,
     TextLayoutResult,
 )
-from papercanvas.text.text_metrics import FontMetrics, resolve_font
+from papercanvas.text.text_metrics import FontMetrics, family_of_file, resolve_font
 
 __all__ = [
     "LINE_SPACING",
@@ -23,5 +23,6 @@ __all__ = [
     "PlacedLine",
     "TextLayout",
     "TextLayoutResult",
+    "family_of_file",
     "resolve_font",
 ]

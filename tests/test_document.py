@@ -145,6 +145,91 @@ def test_read_revision_tolerates_garbage(tmp_path: Path) -> None:
     assert read_revision(str_rev) == 2
 
 
+# -- data safety: crashes, stale locks, temp litter --------------------------
+
+
+def test_crash_between_temp_write_and_replace_leaves_original_intact(
+    ir_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If the process dies after writing the temp file but before os.replace,
+    the on-disk IR must be untouched and no temp litter may remain."""
+    before = ir_file.read_bytes()
+    doc = FigureDocument.load(ir_file)
+    doc.figure.revision = 9
+
+    def exploding_replace(src, dst, **kwargs):
+        raise OSError("simulated crash right before the atomic swap")
+
+    monkeypatch.setattr("papercanvas.core.document.os.replace", exploding_replace)
+    with pytest.raises(OSError, match="simulated crash"):
+        doc.save()
+
+    monkeypatch.undo()
+    assert ir_file.read_bytes() == before  # the old revision survives
+    assert [p for p in ir_file.parent.iterdir() if ".tmp-" in p.name] == []
+
+    doc.save()  # a healthy retry then succeeds
+    assert read_revision(ir_file) == 9
+
+
+def test_stale_lock_error_names_the_holding_pid(tmp_path: Path, figure_dict: dict) -> None:
+    """A crashed writer leaves the .lock sidecar behind; the error must tell
+    the user which process held it and that manual cleanup is possible."""
+    import json as _json
+
+    target = tmp_path / "fig.json"
+    target.write_text(_json.dumps(figure_dict), encoding="utf-8")
+    lock = lock_path_for(target)
+    lock.write_bytes(b"424242\n")  # pid of the "crashed" writer
+
+    doc = FigureDocument.load(target)
+    doc.figure.revision = 2
+    with pytest.raises(DocumentLockError) as excinfo:
+        doc.save(timeout=0.2)
+    assert "424242" in str(excinfo.value)
+    assert "delete the .lock" in str(excinfo.value)
+
+    # the failed attempt changed nothing and did not steal the lock
+    assert _json.loads(target.read_text(encoding="utf-8"))["revision"] == 1
+    assert lock.exists()
+
+    lock.unlink()  # the documented manual cleanup
+    doc.save()
+    assert read_revision(target) == 2
+    assert not lock.exists()  # a successful save releases its own lock
+
+
+def test_failed_save_leaves_no_temp_litter(
+    ir_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    before = ir_file.read_bytes()
+    doc = FigureDocument.load(ir_file)
+
+    def exploding_fsync(fh):
+        raise OSError("disk went away mid-fsync")
+
+    monkeypatch.setattr("papercanvas.core.document.os.fsync", exploding_fsync)
+    with pytest.raises(OSError, match="mid-fsync"):
+        doc.save()
+
+    monkeypatch.undo()
+    assert ir_file.read_bytes() == before
+    assert sorted(p.name for p in ir_file.parent.iterdir()) == [ir_file.name]
+
+
+def test_lock_survives_reader_traffic(ir_file: Path) -> None:
+    """Loading (read-only) never blocks on or removes a concurrent lock."""
+    import json as _json
+
+    lock = lock_path_for(ir_file)
+    lock.write_bytes(b"999\n")
+    doc = FigureDocument.load(ir_file)  # read path is lock-free
+    assert doc.figure.revision == 1
+    assert lock.exists()  # untouched by the reader
+    assert _json.loads(_json.dumps(doc.figure.model_dump(mode="json")))["revision"] == 1
+    lock.unlink()
+
+
 def test_load_tolerates_utf8_bom(tmp_path: Path, figure_dict: dict) -> None:
     path = tmp_path / "bom.json"
     path.write_bytes(b"\xef\xbb\xbf" + serialize_figure(Figure.model_validate(figure_dict)))

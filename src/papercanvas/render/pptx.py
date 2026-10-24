@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import datetime
 import io
+import math
+import types
 import zipfile
 
 from pptx import Presentation
@@ -32,7 +34,6 @@ from papercanvas.layout.routing import route_orthogonal
 from papercanvas.render.style import (
     DEFAULT_FILL,
     DEFAULT_TEXT_FILL,
-    GROUP_LABEL_OFFSET_MM,
     GROUP_PADDING_MM,
     require_placed,
     resolve_fill,
@@ -40,7 +41,7 @@ from papercanvas.render.style import (
     round_corner_mm,
     stroke_width_mm,
 )
-from papercanvas.text.text_layout import LINE_SPACING, TextLayout
+from papercanvas.text.text_layout import LINE_SPACING, TextLayout, wrap_text
 
 _FIXED_TIMESTAMP = datetime.datetime(2000, 1, 1, 0, 0, 0)
 
@@ -93,12 +94,13 @@ def _add_arrowhead(line, *, head: bool) -> None:
 
 
 def _textbox_for_line(
-    shapes, line, origin_x_mm: float, origin_y_mm: float,
+    shapes, line, left_mm: float, baseline_mm: float,
     ascent_mm: float, line_height_mm: float, theme,
 ):
+    """One textbox whose first-glyph baseline lands on ``baseline_mm``."""
     box = shapes.add_textbox(
-        _emu(origin_x_mm + line.x_mm),
-        _emu(origin_y_mm + line.y_mm - ascent_mm),
+        _emu(left_mm + line.x_mm),
+        _emu(baseline_mm - ascent_mm),
         _emu(line.width_mm + 2.0),
         _emu(line_height_mm + 0.4),
     )
@@ -198,18 +200,33 @@ def render_pptx(fig: Figure, text_layout: TextLayout) -> bytes:
             group.style.stroke_dash,
         )
         if group.label:
-            result = text_layout.layout_label(
-                group.label,
-                font_family=theme.font_family,
-                font_size_pt=theme.font_size_pt,
-                box_w_mm=x1 - x0,
-                box_h_mm=GROUP_LABEL_OFFSET_MM,
-                padding_h_mm=GROUP_PADDING_MM,
-                padding_v_mm=0.5,
+            # label sits ABOVE the dashed border, left-aligned — same rule as
+            # SVG/PDF; never wraps (group labels are short) but honors
+            # explicit . A block that would leave the canvas clamps down
+            # inside the border strip instead.
+            lines = wrap_text(group.label, math.inf, text_layout.metrics, theme.font_size_pt)
+            n_lines = len(lines)
+            first_baseline = max(
+                y0 - 1.0 - (n_lines - 1) * line_height_mm,
+                0.5 + ascent_mm + (n_lines - 1) * line_height_mm,
             )
-            for line in result.lines:
+            for index, line_text in enumerate(lines):
+                baseline_mm = first_baseline - (n_lines - 1 - index) * line_height_mm
+                line_obj = types.SimpleNamespace(
+                    text=line_text,
+                    x_mm=0.0,
+                    width_mm=pt_to_mm(
+                        text_layout.metrics.width_pt(line_text, theme.font_size_pt)
+                    ),
+                )
                 _textbox_for_line(
-                    shapes, line, x0, y0, ascent_mm, line_height_mm, theme
+                    shapes,
+                    line_obj,
+                    x0 + 1.5,
+                    baseline_mm,
+                    ascent_mm,
+                    line_height_mm,
+                    theme,
                 )
 
     for edge in fig.edges:
@@ -269,7 +286,13 @@ def render_pptx(fig: Figure, text_layout: TextLayout) -> bytes:
             )
             for line in result.lines:
                 _textbox_for_line(
-                    shapes, line, node.x, node.y, ascent_mm, line_height_mm, theme
+                    shapes,
+                    line,
+                    node.x,
+                    node.y + line.y_mm,
+                    ascent_mm,
+                    line_height_mm,
+                    theme,
                 )
 
     buffer = io.BytesIO()

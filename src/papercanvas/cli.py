@@ -12,20 +12,23 @@ from pydantic import ValidationError as PydanticValidationError
 from rich.console import Console
 
 from papercanvas import __version__
-from papercanvas.core.document import FigureDocument, atomic_write
+from papercanvas.core.document import FigureDocument
 from papercanvas.core.errors import (
     FigureValidationError,
     PaperCanvasError,
-    PatchError,
-    RenderError,
 )
-from papercanvas.core.models import Canvas, Figure
-from papercanvas.core.patch import PatchRequest, apply_patch
-from papercanvas.layout import run_layout
-from papercanvas.lint import LintConfig, findings_to_json, lint_figure
-from papercanvas.render import RENDER_SUFFIXES, render_pdf, render_pptx, render_svg
-from papercanvas.text.text_layout import TextLayout
-from papercanvas.text.text_metrics import FontMetrics
+from papercanvas.service import (
+    ServiceContext,
+    create_figure,
+    inspect_figure,
+    layout_figure,
+    lint_figure_file,
+    patch_figure,
+    render_figure,
+)
+
+#: the CLI is a local user tool: no root containment, any path is allowed
+CLI_CONTEXT = ServiceContext(root=Path.cwd(), enforce_root=False)
 
 app = typer.Typer(
     name="papercanvas",
@@ -94,17 +97,15 @@ def init(
 ) -> None:
     """Create a new, empty figure IR file (nodes/edges added via patch or layout)."""
     try:
-        figure = Figure(
-            id=figure_id,
-            canvas=Canvas(width=width, height=height, margin=margin),
+        created = create_figure(
+            CLI_CONTEXT, str(path), figure_id, width=width, height=height, margin=margin
         )
-        doc = FigureDocument.create(path, figure)
     except (PaperCanvasError, OSError, PydanticValidationError) as exc:
         _fail(exc)
         return
     console.print(
-        f"[green]created[/green] {doc.path} "
-        f"(figure {figure.id!r}, revision {figure.revision})"
+        f"[green]created[/green] {created['path']} "
+        f"(figure {created['figure_id']!r}, revision {created['revision']})"
     )
     console.print("Next: papercanvas patch / layout / render")
 
@@ -149,21 +150,28 @@ def patch(
         raw = ops.read_text(encoding="utf-8") if str(ops) != "-" else _read_stdin()
         payload = json.loads(raw)
         if not isinstance(payload, dict):
-            raise PatchError("ops payload must be a JSON object")
+            raise ValueError("ops payload must be a JSON object")
         if "operations" not in payload:
-            raise PatchError("ops payload needs an 'operations' list")
-        request = PatchRequest(
-            operations=payload["operations"],
+            raise ValueError("ops payload needs an 'operations' list")
+        result = patch_figure(
+            CLI_CONTEXT,
+            str(path),
+            payload["operations"],
             expected_revision=payload.get("expected_revision"),
         )
-        doc = FigureDocument.load(path)
-        result = apply_patch(doc, request)
-    except (PaperCanvasError, OSError, json.JSONDecodeError, RecursionError) as exc:
+        console.print(f"[green]patched[/green] {path} -> revision {result['revision']}")
+        for line in result["applied"]:
+            console.print(f"  • {line}")
+    except (
+        PaperCanvasError,
+        OSError,
+        json.JSONDecodeError,
+        RecursionError,
+        ValueError,
+        TypeError,
+    ) as exc:
         _fail(exc)
         return
-    console.print(f"[green]patched[/green] {path} -> revision {result.revision}")
-    for line in result.applied:
-        console.print(f"  • {line}")
 
 
 def _read_stdin() -> str:
@@ -179,54 +187,15 @@ def layout(
 ) -> None:
     """Arrange nodes and rewrite their coordinates (commits revision+1)."""
     try:
-        doc = FigureDocument.load(path)
-        base_revision = doc.figure.revision
-        laid_out = run_layout(doc.figure, preset.value)
-        laid_out.revision = base_revision + 1
-        doc.save_figure(laid_out, expected_revision=base_revision)
+        result = layout_figure(CLI_CONTEXT, str(path), preset.value)
     except (PaperCanvasError, OSError) as exc:
         _fail(exc)
         return
-    canvas = laid_out.canvas
+    canvas = result["canvas"]
     console.print(
         f"[green]laid out[/green] {path} ({preset.value}) -> revision "
-        f"{laid_out.revision}, canvas {canvas.width:g}×{canvas.height:g} mm"
+        f"{result['revision']}, canvas {canvas['width']:g}×{canvas['height']:g} mm"
     )
-
-
-def _ensure_not_ir(target: Path, ir_path: Path) -> None:
-    """Render output must never overwrite the single source of truth."""
-    if target.exists() and target.resolve() == ir_path.resolve():
-        raise RenderError(
-            f"refusing to write rendered output over the IR file {ir_path}; "
-            f"choose another --out"
-        )
-
-
-def _render_bytes(figure, text_layout, fmt: str) -> bytes:
-    if fmt == "svg":
-        return render_svg(figure, text_layout)
-    if fmt == "pdf":
-        return render_pdf(figure, text_layout)
-    if fmt == "pptx":
-        return render_pptx(figure, text_layout)
-    raise RenderError(f"unknown render format {fmt!r}")  # pragma: no cover
-
-
-def _render_formats(
-    figure, text_layout, formats: list[str], path: Path, out: Path | None
-) -> list[Path]:
-    """Render to each requested format; returns the written targets."""
-    if len(formats) > 1 and out is not None:
-        raise RenderError("--out with multiple formats is ambiguous; omit --out")
-    targets = []
-    for fmt in formats:
-        default = path.with_suffix(RENDER_SUFFIXES[fmt])
-        target = out if (out is not None and len(formats) == 1) else default
-        _ensure_not_ir(target, path)
-        atomic_write(target, _render_bytes(figure, text_layout, fmt))
-        targets.append(target)
-    return targets
 
 
 @app.command()
@@ -244,14 +213,14 @@ def render(
     """Render the figure (strictly read-only on the IR)."""
     formats = ["svg", "pdf", "pptx"] if format == RenderFormat.all else [format.value]
     try:
-        doc = FigureDocument.load(path)
-        text_layout = TextLayout(FontMetrics.for_family(doc.figure.theme.font_family))
-        targets = _render_formats(doc.figure, text_layout, formats, path, out)
+        result = render_figure(CLI_CONTEXT, str(path), formats, out=str(out) if out else None)
     except (PaperCanvasError, OSError) as exc:
         _fail(exc)
         return
-    for target in targets:
-        console.print(f"[green]rendered[/green] {target} ({target.stat().st_size} bytes)")
+    for file_info in result["files"]:
+        console.print(
+            f"[green]rendered[/green] {file_info['path']} ({file_info['bytes']} bytes)"
+        )
 
 
 @app.command()
@@ -268,23 +237,17 @@ def build(
     ] = None,
 ) -> None:
     """One command: layout (commits revision+1) then render."""
+    formats = ["svg", "pdf", "pptx"] if format == RenderFormat.all else [format.value]
     try:
-        doc = FigureDocument.load(path)
-        base_revision = doc.figure.revision
-        laid_out = run_layout(doc.figure, preset.value)
-        laid_out.revision = base_revision + 1
-        doc.save_figure(laid_out, expected_revision=base_revision)
-        text_layout = TextLayout(FontMetrics.for_family(laid_out.theme.font_family))
-        formats = ["svg", "pdf", "pptx"] if format == RenderFormat.all else [format.value]
-        targets = _render_formats(laid_out, text_layout, formats, path, out)
+        layout_figure(CLI_CONTEXT, str(path), preset.value)
+        result = render_figure(CLI_CONTEXT, str(path), formats, out=str(out) if out else None)
     except (PaperCanvasError, OSError) as exc:
         _fail(exc)
         return
-    canvas = laid_out.canvas
-    rendered = ", ".join(str(target) for target in targets)
+    rendered = ", ".join(item["path"] for item in result["files"])
     console.print(
         f"[green]built[/green] {rendered} — preset {preset.value}, revision "
-        f"{laid_out.revision}, canvas {canvas.width:g}×{canvas.height:g} mm"
+        f"{result['revision']}"
     )
 
 
@@ -304,45 +267,64 @@ def lint(
     still exit 0.
     """
     try:
-        # lenient load: lint is the diagnostic entry point for structurally
-        # broken figures (FC002 reports what hard validation would reject)
-        doc = FigureDocument.load(path, lenient=True)
-        text_layout = TextLayout(FontMetrics.for_family(doc.figure.theme.font_family))
-        try:
-            # FC008 inspects rendered output; rendering to memory is
-            # read-only. Best-effort: unplaced figures or hard-invalid
-            # colors skip the scan (FC002 reports the root cause instead).
-            svg_bytes = _render_bytes(doc.figure, text_layout, "svg")
-        except (RenderError, ValueError):
-            svg_bytes = None
-        findings = lint_figure(
-            doc.figure,
-            text_layout,
-            config=LintConfig(min_font_size_pt=min_font_size),
-            svg_bytes=svg_bytes,
+        report = lint_figure_file(CLI_CONTEXT, str(path), min_font_size_pt=min_font_size)
+    except (PaperCanvasError, OSError) as exc:
+        _fail(exc)
+        return
+    if output_format == LintOutputFormat.json:
+        payload = {k: v for k, v in report.items() if k not in ("ok", "path")}
+        typer.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        for finding in report["findings"]:
+            color = "red" if finding["severity"] == "error" else "yellow"
+            scope = f" [{finding['object_id']}]" if finding["object_id"] else ""
+            console.print(
+                f"[{color}]{finding['rule_id']}[/] {finding['severity']}{scope}: "
+                f"{finding['message']}"
+            )
+        if not report["findings"]:
+            console.print("[green]clean[/green] — no findings")
+        console.print(
+            f"{report['summary']['errors']} error(s), "
+            f"{report['summary']['warnings']} warning(s)"
         )
+
+    if report["summary"]["errors"]:
+        raise typer.Exit(EXIT_ERROR)
+
+
+@app.command()
+def inspect(
+    path: Annotated[Path, typer.Argument(help="Figure IR file to inspect.")],
+    object_id: Annotated[
+        str | None,
+        typer.Argument(help="Optional object id for full detail."),
+    ] = None,
+    output_format: Annotated[
+        LintOutputFormat, typer.Option("--format", help="Human-readable or JSON output.")
+    ] = LintOutputFormat.text,
+) -> None:
+    """Show object inventory or one object's full detail (read-only)."""
+    try:
+        result = inspect_figure(CLI_CONTEXT, str(path), object_id)
     except (PaperCanvasError, OSError) as exc:
         _fail(exc)
         return
 
     if output_format == LintOutputFormat.json:
-        typer.echo(json.dumps(findings_to_json(findings), ensure_ascii=False, indent=2))
-    else:
-        report = findings_to_json(findings)
-        for finding in findings:
-            color = "red" if finding.severity == "error" else "yellow"
-            scope = f" [{finding.object_id}]" if finding.object_id else ""
-            console.print(
-                f"[{color}]{finding.rule_id}[/] {finding.severity}{scope}: {finding.message}"
-            )
-        if not findings:
-            console.print("[green]clean[/green] — no findings")
-        console.print(
-            f"{report['summary']['errors']} error(s), {report['summary']['warnings']} warning(s)"
-        )
+        typer.echo(json.dumps(result, ensure_ascii=False, indent=2))
+        return
 
-    if any(finding.severity == "error" for finding in findings):
-        raise typer.Exit(EXIT_ERROR)
+    if object_id is not None:
+        for key, value in result["object"].items():
+            console.print(f"{key}: {value}")
+        return
+    console.print(
+        f"figure {result['figure_id']!r} rev {result['revision']} — "
+        f"{len(result['objects'])} object(s)"
+    )
+    for item in result["objects"]:
+        console.print(f"  {item['kind']:>5}  {item['id']}  {item.get('label', '')}")
 
 
 def main() -> None:

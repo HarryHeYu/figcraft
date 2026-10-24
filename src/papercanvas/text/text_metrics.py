@@ -86,18 +86,42 @@ def _load_font(path_str: str, size_px: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(path_str, size_px, layout_engine=ImageFont.Layout.BASIC)
 
 
+@lru_cache(maxsize=64)
+def family_of_file(path_str: str) -> str:
+    """Read the family name embedded in the font file's name table."""
+    font = ImageFont.truetype(path_str, 16, layout_engine=ImageFont.Layout.BASIC)
+    return font.getname()[0]
+
+
 @dataclass(frozen=True)
 class FontMetrics:
-    """Immutable measurement facade for one resolved font file."""
+    """Immutable measurement facade for one resolved font file.
+
+    ``family`` is what the IR asked for; ``resolved_family`` is the family
+    name embedded in the font file actually being used. They differ exactly
+    when a substitution happened (e.g. Arial missing on Linux -> DejaVu
+    Sans), which is what the FC007 lint rule reports.
+    """
 
     family: str  # family as requested in the IR theme
     path: Path  # font file actually used
     substituted: bool  # True if a fallback font was used
+    resolved_family: str  # family name from the font file's name table
 
     @classmethod
     def for_family(cls, family: str) -> FontMetrics:
         path, substituted = resolve_font(family)
-        return cls(family=family, path=path, substituted=substituted)
+        return cls(
+            family=family,
+            path=path,
+            substituted=substituted,
+            resolved_family=family_of_file(str(path)),
+        )
+
+    @property
+    def is_consistent(self) -> bool:
+        """True when the resolved family matches the request case-insensitively."""
+        return self.resolved_family.lower() == self.family.strip().lower()
 
     def _font(self, size_pt: float) -> ImageFont.FreeTypeFont:
         size_px = max(1, round(size_pt * MEASUREMENT_SCALE))

@@ -1,0 +1,7 @@
+{
+  "operations": [
+    {"op": "update_label", "target": "connector", "label": "Cross-Modal Connector"},
+    {"op": "update_node", "id": "llm", "w": 34.0}
+  ],
+  "expected_revision": 4
+}

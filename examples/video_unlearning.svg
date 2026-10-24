@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="178.6426mm" height="34mm" viewBox="0 0 178.6426 34">
+  <defs>
+    <marker id="pc-arrow-0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#444444"/>
+    </marker>
+  </defs>
+  <rect id="background" x="0" y="0" width="178.6426" height="34" fill="#FFFFFF"/>
+  <rect id="group:forget_retain" x="112.9996" y="1" width="26.6986" height="32" fill="none" stroke="#999999" stroke-width="0.35" stroke-dasharray="3 1.5"/>
+  <text x="119.5166" y="3.0576" font-family="Arial" font-size="2.8222" fill="#000000">Unlearning</text>
+  <text x="122.2672" y="6.4443" font-family="Arial" font-size="2.8222" fill="#000000">Heads</text>
+  <polyline id="edge:e_ve_conn" points="27.9996,17 43.9996,17" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_conn_llm" points="69.9996,17 79.9996,17" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_llm_forget" points="113.9996,17 114.9996,17 114.9996,9 115.9996,9" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_llm_retain" points="113.9996,17 114.9996,17 114.9996,25 115.9996,25" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_retain_out" points="136.6982,25 144.6982,25 144.6982,17 152.6982,17" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_forget_out" points="126.3489,4 126.3489,13 163.6704,13 163.6704,22" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <rect id="node:visual_encoder" x="4" y="12" width="23.9996" height="10" fill="#FFFFFF" stroke="#444444" stroke-width="0.35" rx="2.5"/>
+  <text x="6.5" y="17.9784" font-family="Arial" font-size="2.8222" fill="#000000">Visual Encoder</text>
+  <rect id="node:connector" x="43.9996" y="12" width="26" height="10" fill="#FFFFFF" stroke="#444444" stroke-width="0.35" rx="2.5"/>
+  <text x="48.9932" y="16.2851" font-family="Arial" font-size="2.8222" fill="#000000">Cross-Modal</text>
+  <text x="50.4843" y="19.6717" font-family="Arial" font-size="2.8222" fill="#000000">Connector</text>
+  <rect id="node:llm" x="79.9996" y="12" width="34" height="10" fill="#FFFFFF" stroke="#444444" stroke-width="0.35" rx="2.5"/>
+  <text x="94.2518" y="17.9784" font-family="Arial" font-size="2.8222" fill="#000000">LLM</text>
+  <rect id="node:forget_head" x="115.9996" y="4" width="20.6986" height="10" fill="#FCE4CF" stroke="#C17C43" stroke-width="0.35"/>
+  <text x="118.4996" y="9.9784" font-family="Arial" font-size="2.8222" fill="#000000">Forget Head</text>
+  <rect id="node:retain_head" x="115.9996" y="20" width="20.6986" height="10" fill="#E8F0FE" stroke="#4275C4" stroke-width="0.35"/>
+  <text x="118.4996" y="25.9784" font-family="Arial" font-size="2.8222" fill="#000000">Retain Head</text>
+  <rect id="node:gated_output" x="152.6982" y="12" width="21.9444" height="10" fill="#FFFFFF" stroke="#444444" stroke-width="0.8" rx="2.5"/>
+  <text x="155.1982" y="17.9784" font-family="Arial" font-size="2.8222" fill="#000000">Gated Output</text>
+</svg>

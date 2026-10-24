@@ -1,0 +1,8 @@
+{
+  "operations": [
+    {"op": "remove_edge", "id": "e_forget_out"},
+    {"op": "add_edge", "edge": {"id": "e_forget_out", "source": "forget_head", "target": "gated_output", "source_port": "top", "target_port": "bottom"}},
+    {"op": "set_style", "target": "gated_output", "style": {"stroke_width": 0.8}}
+  ],
+  "expected_revision": 5
+}

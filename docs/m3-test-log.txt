@@ -1,0 +1,25 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.3, pytest-9.1.1, pluggy-1.7.0
+rootdir: E:\code\figcraft
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.15.1, cov-7.1.0
+collected 222 items
+
+tests\test_cli.py .....                                                  [  2%]
+tests\test_cli_m1.py ...................                                 [ 10%]
+tests\test_consistency.py ..                                             [ 11%]
+tests\test_docs.py ..                                                    [ 12%]
+tests\test_document.py ..................                                [ 20%]
+tests\test_layout.py ...........                                         [ 25%]
+tests\test_lint.py ................                                      [ 32%]
+tests\test_mcp.py ......                                                 [ 35%]
+tests\test_patch.py ......................................               [ 52%]
+tests\test_pdf.py .........                                              [ 56%]
+tests\test_pptx.py .............                                         [ 62%]
+tests\test_routing.py ......................                             [ 72%]
+tests\test_schema.py ................................                    [ 86%]
+tests\test_svg.py ............                                           [ 92%]
+tests\test_text_layout.py .................                              [100%]
+
+============================ 222 passed in 17.93s =============================

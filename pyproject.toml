@@ -25,10 +25,12 @@ dependencies = [
     "pillow>=11.0",
     "reportlab>=5.1.0",
     "python-pptx>=1.0.2",
+    "mcp>=2.3.0",
 ]
 
 [project.scripts]
 papercanvas = "papercanvas.cli:main"
+papercanvas-mcp = "papercanvas.integrations.mcp_server:main"
 
 [dependency-groups]
 dev = [

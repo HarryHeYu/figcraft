@@ -83,7 +83,57 @@ fixes closed:
   strings coerce identically on `add_node` and `update_node`; word-wrap no
   longer leaves trailing spaces on broken lines.
 
-### Added — M2 (publication-grade exports + lint)
+### Added — M3 (agent integration)
+
+- **Shared service layer** (`service.py`): the single business surface used by
+  CLI, MCP and Python API — create/get/patch/layout/render/lint/inspect all
+  return JSON-safe dicts. `ServiceContext` carries the path policy: with
+  ``enforce_root=True`` (MCP) every path must resolve inside the project root.
+- **MCP server** (`papercanvas-mcp`, stdio): the seven planned tools
+  `papercanvas_create/get/patch/layout/render/lint/inspect` on MCP Python SDK
+  2.3 (`MCPServer` v2 API). Domain failures (bad paths, revision conflicts,
+  invalid operations, missing files) come back as structured
+  `{"ok": false, "error": ...}` — agents always get actionable messages.
+  Path escapes are rejected; outputs stay inside the root. Protocol-level
+  tests run over the in-memory transport (real ClientSession round-trips).
+- **CLI**: all commands delegate to the service layer (no duplicate logic);
+  new `inspect [object_id]` command with text/JSON output.
+- **Agent Skill** (`skills/papercanvas/SKILL.md`): the full description →
+  structure → create → layout → lint-loop → patch → export workflow, MCP/CLI
+  reference and rules of thumb.
+- **Font metrics**: `FontMetrics.resolved_family` now carries the family name
+  embedded in the actual font file (from its name table), distinct from the
+  requested family; FC007 reports the substitute by name; cross-platform
+  tests assert the requested/resolved invariant instead of pinning vendors.
+- **Real-agent end-to-end acceptance** (`docs/m3-e2e-log.md`): a live coding
+  agent created the video-unlearning figure from a method description, made
+  three rounds of semantic edits (styles + group, label + resize, edge
+  re-route + stroke), fixed an FC003 finding the lint caught, exported all
+  three formats, and verified untouched objects stayed byte-identical after
+  every round. Artifacts: `examples/video_unlearning.*`; patches:
+  `docs/e2e/`.
+
+### Fixed — M3 round
+
+- **[P1]** `papercanvas lint` crashed with a traceback on hard-invalid
+  figures (bad color) inside the FC008 pre-render — the exact case lint must
+  diagnose; the pre-render is best-effort and FC002 reports the cause.
+- **[P1]** group label could collide with children (label strip baseline
+  below the children top) or leave the canvas when the group hugged the top
+  edge and its label wrapped; group labels now render unwrapped, left-aligned
+  above the dashed border (paper-figure convention), clamped inside the
+  canvas — the same formula in SVG, PDF and PPTX.
+- **[P2]** `_REGISTERED_FONTS` cached by sanitized name only: two families
+  sanitizing identically but resolving to different files embedded the wrong
+  font in long-lived processes; the key now includes the resolved file.
+- **[P2]** group style explicitly set to null rendered differently per
+  format; all three backends share one None-resolution now.
+- README quick-start example had a dangling edge (referenced a node that was
+  not shown) and could not render; it is now a complete, tested IR — a doc
+  test extracts every README JSON block and validates + builds it.
+- Data-safety tests added: crash between temp-write and atomic swap leaves
+  the IR untouched with zero temp litter; stale-lock errors name the holding
+  pid; failed saves never leave `.tmp-*` files; readers never disturb locks.
 
 - **PDF renderer** (`render/pdf.py`, reportlab): direct vector output — no
   SVG conversion, no rasterization. Embedded TTF subsets, mm→pt via
@@ -112,6 +162,8 @@ fixes closed:
 - Cross-format consistency: node geometry agrees across SVG/PDF/PPTX
   within ~4×10⁻⁵ mm (independently verified; the acceptance bar is
   0.2 mm). Determinism holds for all three formats across processes.
+
+### Added — M2 (publication-grade exports + lint)
 
 ### Fixed — M2 verification round
 

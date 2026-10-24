@@ -158,6 +158,41 @@ def test_node_stroke_dash_is_rendered(figure_dict: dict) -> None:
     assert 'stroke-dasharray="0.8 1.2"' in svg
 
 
+def test_group_label_stays_inside_canvas_when_group_hugs_the_top(
+    figure_dict: dict,
+) -> None:
+    """Regression: a narrow group at the top of the canvas wrapped its label
+    and pushed the text above the canvas edge. The block must clamp down."""
+    figure_dict["nodes"] = [
+        {"id": "a", "type": "rect", "label": "A", "x": 10, "y": 4, "w": 22, "h": 10},
+        {"id": "b", "type": "rect", "label": "B", "x": 10, "y": 20, "w": 22, "h": 10},
+    ]
+    figure_dict["edges"] = []
+    figure_dict["groups"] = [
+        {"id": "gtop", "children": ["a", "b"], "label": "Unlearning"}
+    ]
+    fig = Figure.model_validate(figure_dict)
+    svg = _render(fig).decode("utf-8")
+
+    import re
+
+    group_y = float(
+        re.search(r'id="group:gtop"[^>]*? y="([\d.-]+)"', svg).group(1)
+    )
+    text_ys = [
+        (float(y), text)
+        for y, text in re.findall(r'<text x="[\d.]+" y="([\d.-]+)"[^>]*>([^<]*)</text>', svg)
+    ]
+    assert text_ys, "no text elements rendered"
+    assert min(y for y, _text in text_ys) >= 0.0, "group label escaped the canvas"
+    # the group label (baseline clamped below the border) must stay above the
+    # children, which start at y=4 (group top + 3 mm padding)
+    label_ys = [y for y, text in text_ys if text == "Unlearning"]
+    assert label_ys, "group label missing"
+    assert max(label_ys) < 4.0, "group label collided with children"
+    assert group_y == pytest.approx(1.0, abs=0.01)
+
+
 def test_arrow_markers_present_and_absent(figure_dict: dict) -> None:
     figure_dict["nodes"] = [
         {"id": "a", "x": 10, "y": 20, "w": 30, "h": 15},

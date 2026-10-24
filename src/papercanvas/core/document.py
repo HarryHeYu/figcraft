@@ -51,7 +51,8 @@ def file_lock(
     """Sidecar lock via ``O_CREAT | O_EXCL``.
 
     Stale locks are deliberately never stolen: on timeout we raise
-    DocumentLockError and the user clears the ``.lock`` file manually.
+    DocumentLockError (naming the pid recorded inside the lock, when
+    readable) and the user clears the ``.lock`` file manually.
     """
     deadline = time.monotonic() + timeout
     while True:
@@ -60,9 +61,11 @@ def file_lock(
             break
         except FileExistsError:
             if time.monotonic() >= deadline:
+                holder = _read_lock_holder(path)
                 raise DocumentLockError(
-                    f"lock {path} is held by another process "
-                    f"(waited {timeout:g}s); if you are sure no process is "
+                    f"lock {path} is held by another process"
+                    f"{' (pid ' + holder + ')' if holder else ''}"
+                    f" (waited {timeout:g}s); if you are sure no process is "
                     f"writing, delete the .lock file manually"
                 ) from None
             time.sleep(poll)
@@ -78,6 +81,14 @@ def file_lock(
             path.unlink()
         except FileNotFoundError:
             pass
+
+
+def _read_lock_holder(path: Path) -> str | None:
+    try:
+        content = path.read_bytes()[:32].decode("ascii", errors="replace").strip()
+        return content or None
+    except OSError:
+        return None
 
 
 def atomic_write(path: Path, data: bytes) -> None:

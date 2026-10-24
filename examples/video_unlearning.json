@@ -1,0 +1,199 @@
+{
+  "schema_version": "0.1",
+  "id": "video_unlearning",
+  "revision": 7,
+  "canvas": {
+    "width": 178.6425842285156,
+    "height": 34.0,
+    "unit": "mm",
+    "margin": 4.0
+  },
+  "theme": {
+    "font_family": "Arial",
+    "font_size_pt": 8.0,
+    "palette": {},
+    "background": "#FFFFFF"
+  },
+  "nodes": [
+    {
+      "id": "visual_encoder",
+      "type": "rounded_rect",
+      "label": "Visual Encoder",
+      "x": 4.0,
+      "y": 12.0,
+      "w": 23.999615478515622,
+      "h": 10.0,
+      "style": {
+        "fill": null,
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "connector",
+      "type": "rounded_rect",
+      "label": "Cross-Modal Connector",
+      "x": 43.99961547851562,
+      "y": 12.0,
+      "w": 26.0,
+      "h": 10.0,
+      "style": {
+        "fill": null,
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "llm",
+      "type": "rounded_rect",
+      "label": "LLM",
+      "x": 79.99961547851562,
+      "y": 12.0,
+      "w": 34.0,
+      "h": 10.0,
+      "style": {
+        "fill": null,
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "forget_head",
+      "type": "rect",
+      "label": "Forget Head",
+      "x": 115.99961547851562,
+      "y": 4.0,
+      "w": 20.69861111111111,
+      "h": 10.0,
+      "style": {
+        "fill": "#FCE4CF",
+        "stroke": "#C17C43",
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "retain_head",
+      "type": "rect",
+      "label": "Retain Head",
+      "x": 115.99961547851562,
+      "y": 20.0,
+      "w": 20.69861111111111,
+      "h": 10.0,
+      "style": {
+        "fill": "#E8F0FE",
+        "stroke": "#4275C4",
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "gated_output",
+      "type": "rounded_rect",
+      "label": "Gated Output",
+      "x": 152.69822658962673,
+      "y": 12.0,
+      "w": 21.94435763888889,
+      "h": 10.0,
+      "style": {
+        "fill": null,
+        "stroke": null,
+        "stroke_width": 0.8,
+        "stroke_dash": null
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_ve_conn",
+      "source": "visual_encoder",
+      "target": "connector",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_conn_llm",
+      "source": "connector",
+      "target": "llm",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_llm_forget",
+      "source": "llm",
+      "target": "forget_head",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_llm_retain",
+      "source": "llm",
+      "target": "retain_head",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_retain_out",
+      "source": "retain_head",
+      "target": "gated_output",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_forget_out",
+      "source": "forget_head",
+      "target": "gated_output",
+      "source_port": "top",
+      "target_port": "bottom",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "forget_retain",
+      "children": [
+        "forget_head",
+        "retain_head"
+      ],
+      "label": "Unlearning Heads",
+      "style": {
+        "fill": null,
+        "stroke": "#999999",
+        "stroke_width": null,
+        "stroke_dash": "dashed"
+      }
+    }
+  ]
+}

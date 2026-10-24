@@ -202,8 +202,9 @@ def fc007_font_resolution(fig: Figure, text_layout: TextLayout) -> list[Finding]
                 "FC007",
                 WARNING,
                 f"font family {fig.theme.font_family!r} is not installed; "
-                f"substituted with {metrics.path.name} — line breaks were "
-                f"measured against the substitute",
+                f"substituted with {metrics.resolved_family!r} "
+                f"({metrics.path.name}) — line breaks were measured against "
+                f"the substitute",
             )
         ]
     return []

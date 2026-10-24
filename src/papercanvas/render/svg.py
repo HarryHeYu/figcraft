@@ -35,7 +35,7 @@ from papercanvas.render.style import (
 from papercanvas.render.style import (
     require_placed as _require_placed,
 )
-from papercanvas.text.text_layout import TextLayout
+from papercanvas.text.text_layout import LINE_SPACING, TextLayout
 
 SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -143,6 +143,9 @@ def render_svg(fig: Figure, text_layout: TextLayout) -> bytes:
             attrs["stroke-dasharray"] = DASH_PATTERNS[dash]
         etree.SubElement(root, _q("rect"), **attrs)
         if group.label:
+            # label sits ABOVE the dashed border (paper-figure convention) so
+            # it never collides with the children; line breaks still come
+            # from TextLayout, and the block is anchored by its last baseline
             result = text_layout.layout_label(
                 group.label,
                 font_family=theme.font_family,
@@ -152,12 +155,22 @@ def render_svg(fig: Figure, text_layout: TextLayout) -> bytes:
                 padding_h_mm=GROUP_PADDING_MM,
                 padding_v_mm=0.5,
             )
-            for line in result.lines:
+            n_lines = len(result.lines)
+            ascent_mm = pt_to_mm(
+                text_layout.metrics.ascent_descent_pt(theme.font_size_pt)[0]
+            )
+            line_height_mm = pt_to_mm(theme.font_size_pt * LINE_SPACING)
+            first_baseline = max(
+                y0 - 1.0 - (n_lines - 1) * line_height_mm,
+                0.5 + ascent_mm + (n_lines - 1) * line_height_mm,
+            )
+            for index, line in enumerate(result.lines):
+                baseline_mm = first_baseline - (n_lines - 1 - index) * line_height_mm
                 etree.SubElement(
                     root,
                     _q("text"),
                     x=_fmt(x0 + line.x_mm),
-                    y=_fmt(y0 + line.y_mm),
+                    y=_fmt(baseline_mm),
                     **_text_attrs(theme),
                 ).text = line.text
 

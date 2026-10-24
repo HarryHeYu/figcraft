@@ -127,3 +127,33 @@ def test_empty_label_layouts_to_nothing(layout: TextLayout) -> None:
     )
     assert result.lines == ()
     assert result.fits
+
+
+# -- resolved vs requested family (FontMetrics) -----------------------------
+
+
+@pytest.mark.parametrize(
+    "requested",
+    ["Arial", "arial", "Times New Roman", "DejaVu Sans", "No Such Font 42"],
+)
+def test_font_metrics_distinguish_requested_from_resolved(requested: str) -> None:
+    """Cross-platform invariant: ``substituted`` exactly mirrors whether the
+    font file's embedded family matches the request (case-insensitively)."""
+    metrics = FontMetrics.for_family(requested)
+    assert metrics.family == requested
+    assert metrics.resolved_family  # a concrete family name is always known
+    assert metrics.substituted == (not metrics.is_consistent)
+
+
+def test_font_metrics_deterministic_across_instances() -> None:
+    first = FontMetrics.for_family("Arial")
+    second = TextLayout(FontMetrics.for_family("Arial")).metrics
+    assert first == second
+
+
+def test_substituted_family_reports_actual_font() -> None:
+    metrics = FontMetrics.for_family("No Such Font 42")
+    assert metrics.substituted
+    assert metrics.resolved_family.strip().lower() != "no such font 42"
+    # the measurement facade keeps both names apart
+    assert metrics.family == "No Such Font 42"

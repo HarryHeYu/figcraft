@@ -1,0 +1,17 @@
+{
+  "operations": [
+    {"op": "add_node", "node": {"id": "visual_encoder", "type": "rounded_rect", "label": "Visual Encoder"}},
+    {"op": "add_node", "node": {"id": "connector", "type": "rounded_rect", "label": "Connector"}},
+    {"op": "add_node", "node": {"id": "llm", "type": "rounded_rect", "label": "LLM"}},
+    {"op": "add_node", "node": {"id": "forget_head", "type": "rect", "label": "Forget Head"}},
+    {"op": "add_node", "node": {"id": "retain_head", "type": "rect", "label": "Retain Head"}},
+    {"op": "add_node", "node": {"id": "gated_output", "type": "rounded_rect", "label": "Gated Output"}},
+    {"op": "add_edge", "edge": {"id": "e_ve_conn", "source": "visual_encoder", "target": "connector"}},
+    {"op": "add_edge", "edge": {"id": "e_conn_llm", "source": "connector", "target": "llm"}},
+    {"op": "add_edge", "edge": {"id": "e_llm_forget", "source": "llm", "target": "forget_head"}},
+    {"op": "add_edge", "edge": {"id": "e_llm_retain", "source": "llm", "target": "retain_head"}},
+    {"op": "add_edge", "edge": {"id": "e_forget_out", "source": "forget_head", "target": "gated_output"}},
+    {"op": "add_edge", "edge": {"id": "e_retain_out", "source": "retain_head", "target": "gated_output"}}
+  ],
+  "expected_revision": 1
+}

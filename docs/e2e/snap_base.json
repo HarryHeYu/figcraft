@@ -1,0 +1,169 @@
+{
+ "nodes": {
+  "visual_encoder": {
+   "id": "visual_encoder",
+   "type": "rounded_rect",
+   "label": "Visual Encoder",
+   "x": 4.0,
+   "y": 12.0,
+   "w": 23.999615478515622,
+   "h": 10.0,
+   "style": {
+    "fill": null,
+    "stroke": null,
+    "stroke_width": null,
+    "stroke_dash": null
+   }
+  },
+  "connector": {
+   "id": "connector",
+   "type": "rounded_rect",
+   "label": "Connector",
+   "x": 43.99961547851562,
+   "y": 12.0,
+   "w": 20.0,
+   "h": 10.0,
+   "style": {
+    "fill": null,
+    "stroke": null,
+    "stroke_width": null,
+    "stroke_dash": null
+   }
+  },
+  "llm": {
+   "id": "llm",
+   "type": "rounded_rect",
+   "label": "LLM",
+   "x": 79.99961547851562,
+   "y": 12.0,
+   "w": 20.0,
+   "h": 10.0,
+   "style": {
+    "fill": null,
+    "stroke": null,
+    "stroke_width": null,
+    "stroke_dash": null
+   }
+  },
+  "forget_head": {
+   "id": "forget_head",
+   "type": "rect",
+   "label": "Forget Head",
+   "x": 115.99961547851562,
+   "y": 4.0,
+   "w": 20.69861111111111,
+   "h": 10.0,
+   "style": {
+    "fill": null,
+    "stroke": null,
+    "stroke_width": null,
+    "stroke_dash": null
+   }
+  },
+  "retain_head": {
+   "id": "retain_head",
+   "type": "rect",
+   "label": "Retain Head",
+   "x": 115.99961547851562,
+   "y": 20.0,
+   "w": 20.69861111111111,
+   "h": 10.0,
+   "style": {
+    "fill": null,
+    "stroke": null,
+    "stroke_width": null,
+    "stroke_dash": null
+   }
+  },
+  "gated_output": {
+   "id": "gated_output",
+   "type": "rounded_rect",
+   "label": "Gated Output",
+   "x": 152.69822658962673,
+   "y": 12.0,
+   "w": 21.94435763888889,
+   "h": 10.0,
+   "style": {
+    "fill": null,
+    "stroke": null,
+    "stroke_width": null,
+    "stroke_dash": null
+   }
+  }
+ },
+ "edges": {
+  "e_ve_conn": {
+   "id": "e_ve_conn",
+   "source": "visual_encoder",
+   "target": "connector",
+   "source_port": "right",
+   "target_port": "left",
+   "style": {
+    "stroke": null,
+    "stroke_width": null,
+    "arrow": "end"
+   }
+  },
+  "e_conn_llm": {
+   "id": "e_conn_llm",
+   "source": "connector",
+   "target": "llm",
+   "source_port": "right",
+   "target_port": "left",
+   "style": {
+    "stroke": null,
+    "stroke_width": null,
+    "arrow": "end"
+   }
+  },
+  "e_llm_forget": {
+   "id": "e_llm_forget",
+   "source": "llm",
+   "target": "forget_head",
+   "source_port": "right",
+   "target_port": "left",
+   "style": {
+    "stroke": null,
+    "stroke_width": null,
+    "arrow": "end"
+   }
+  },
+  "e_llm_retain": {
+   "id": "e_llm_retain",
+   "source": "llm",
+   "target": "retain_head",
+   "source_port": "right",
+   "target_port": "left",
+   "style": {
+    "stroke": null,
+    "stroke_width": null,
+    "arrow": "end"
+   }
+  },
+  "e_forget_out": {
+   "id": "e_forget_out",
+   "source": "forget_head",
+   "target": "gated_output",
+   "source_port": "right",
+   "target_port": "left",
+   "style": {
+    "stroke": null,
+    "stroke_width": null,
+    "arrow": "end"
+   }
+  },
+  "e_retain_out": {
+   "id": "e_retain_out",
+   "source": "retain_head",
+   "target": "gated_output",
+   "source_port": "right",
+   "target_port": "left",
+   "style": {
+    "stroke": null,
+    "stroke_width": null,
+    "arrow": "end"
+   }
+  }
+ },
+ "groups": []
+}
