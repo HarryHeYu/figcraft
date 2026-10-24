@@ -1,0 +1,19 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.3, pytest-9.1.1, pluggy-1.7.0
+rootdir: E:\code\figcraft
+configfile: pyproject.toml
+testpaths: tests
+plugins: cov-7.1.0
+collected 154 items
+
+tests\test_cli.py .....                                                  [  3%]
+tests\test_cli_m1.py ...........                                         [ 10%]
+tests\test_document.py ..............                                    [ 19%]
+tests\test_layout.py ...........                                         [ 26%]
+tests\test_patch.py ......................................               [ 51%]
+tests\test_routing.py ......................                             [ 65%]
+tests\test_schema.py ................................                    [ 86%]
+tests\test_svg.py ...........                                            [ 93%]
+tests\test_text_layout.py ..........                                     [100%]
+
+============================ 154 passed in 12.80s =============================

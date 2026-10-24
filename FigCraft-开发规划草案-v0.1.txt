@@ -1,0 +1,794 @@
+# FigCraft — MVP 开发规划与第一版技术方案
+
+项目设计草案 v0.1 · 2026 年 10 月 24 日
+
+项目名称： FigCraft
+
+项目定位： Agent-Native Scientific Figure Studio
+
+一句话介绍： An agent-native, programmable scientific figure engine that turns structured descriptions into publication-ready, editable vector graphics.
+
+核心原则： Figures as Code, Agents as Artists.
+
+FigCraft 不应该只是又一个“输入 Prompt → 生成科研图片”的工具，而应该是一套能够被 Coding Agent 调用的科研绘图引擎、结构化编辑系统和质量检查工具链。
+
+最终希望实现这样的用户体验：
+
+```
+# 新建一个科研图工程
+figcraft init figures/method
+
+# 根据结构化描述生成图形
+figcraft render figures/method/figure.json \
+  --format svg,pdf,pptx
+
+# 检查投稿质量
+figcraft lint figures/method/figure.json
+
+# 使用统一布局重新排版
+figcraft layout figures/method/figure.json \
+  --preset two-column
+```
+
+Agent 可以在这套命令之上，通过 MCP 工具创建节点、连接模块、修改标签和调整排版，而不用每次重画整张图。
+
+## 一、MVP 产品范围
+
+v0.1 — 最小可用版本
+
+建议范围
+
+结构化绘图
+
+节点、连接线、分组、文本、配色
+
+多格式导出
+
+SVG / PDF / PPTX，保持可编辑性
+
+Agent 工具接口
+
+Python API / CLI / MCP / Skill
+
+质量检查
+
+溢出、重叠、字体、边界及可复现性
+
+### 首版支持的图形
+
+[ChatGPT の GPT とは何の略？完全ガイド | FlowHunt](https://images.openai.com/static-rsc-4/uCQKAlw7P7pQTULV7-Cohzvg5kllcmYcVQeqgXtc1hQjtkqpmv4mE1EXHK4txcA_kkeheAwor6-VNtYfvu9Bj6crcl2ZblRioJ_AbWHdP_kKBIwLJVDfoSKSLgKTZMPuR0f5GbTeF-bYHvF90YAYDnCFRj1LgN6-8Ju-uAFkHVU?purpose=inline)
+
+模型架构图
+
+Module / Backbone / Branch
+
+[How Machine Learning Models Are Built? | by Jayendra More | Bootcamp | Jan, 2026 | Medium](https://images.openai.com/static-rsc-4/VohZ-I2ONJRgtQzH1b6tyU9XiVb7tH4YcFXwQKUQn5Ep7aJx_KslBxahlxwejadWSq2CFEJwEFQvFtexWPMajRiWzpKnjxukUQP0cuKE0NJ5TA8EC4jAEBkWB_044cn3QYOzpmAUlatuaVzJNUfhuGRWkaPpNvUgCO-WTR2C0Dk?purpose=inline)
+
+方法流程图
+
+Pipeline / Workflow
+
+[Future Electronics — Machine Learning | Futureelectronics NorthAmerica Site](https://images.openai.com/static-rsc-4/mOoGWJdFhXWpCvnoo_V-M19UHkI0TCmWqM95Jsgsm2A7ogh2r1Ao8joL9bTvezZc66OSVKPRjr_c3SGxwDuDUqzKc-Ezv-1n_X64qocWCeWqeyF6rG0W7xrU3bAYFdCVGplJZo5tUksocypJ5-72e-CKT_S66Wd-SEZ9wOxmMeM?purpose=inline)
+
+系统框架图
+
+Stages / Groups / Connections
+
+以上是首版的三种目标图型，不追求马上支持复杂的神经网络内部结构图、3D 示意图、真实图像重绘或实验数据可视化。
+
+实验曲线仍应优先采用 Matplotlib 等工具；FigCraft 后续可以支持导入这些现成的矢量结果。
+
+### 明确不做的内容
+
+v0.1 不做网页版画布、不做自己的 AI 模型、不做任意图片到完美 SVG 的逆向重建、不做任意 SVG/PPTX 的双向无损导入，也不做完整的 TikZ 编译器。
+
+这些目标很容易让一个小项目变成庞大的图形软件工程。首先把原生图形生成、精准编辑和多格式导出做好更重要。
+
+## 二、技术架构：Figure IR 是整个项目的核心
+
+Agent / CLI / Python API
+
+自然语言经由外部 Agent 解析为结构化命令
+
+Command / Patch Engine
+
+参数验证 · 对象 ID · 增量修改 · 版本变更
+
+## Figure IR
+
+唯一可信的图形源数据
+
+Nodes
+
+Edges
+
+Groups
+
+Styles
+
+Layout + Geometry + Lint
+
+确定性布局、文字测量、连线与边界检查
+
+SVG Renderer
+
+PDF Exporter
+
+PPTX Renderer
+
+这里有个关键决定：
+
+Figure IR 是源文件；SVG、PDF 和 PPTX 都是构建产物。
+
+生成的 PPTX 可以交给作者修改，但在首版中，不承诺能把 PowerPoint 内的修改无损同步回 Figure IR。否则很快会陷入复杂的双向格式转换问题。
+
+另外，Agent 修改文件时应通过语义化 Patch，而不是直接修改任意 XML 或 PowerPoint 内部文件。
+
+例如，Agent 想把一个模块从蓝色改成橙色，只需要调用：
+
+```
+{
+  "op": "set_style",
+  "target": "forget_branch",
+  "style": {
+    "fill": "#FCE4CF"
+  }
+}
+```
+
+它不需要重新生成整个流程图。
+
+## 三、技术栈与依赖选择
+
+结合目前的 Python 生态，我建议采用下面的组合。
+
+| 模块   | 技术方案                  | 原因                |
+| ---- | --------------------- | ----------------- |
+| 开发语言 | Python 3.11+          | 与科研环境、Agent 生态兼容  |
+| 数据模型 | Pydantic v2           | 强类型校验、JSON Schema |
+| CLI  | Typer + Rich          | 易测试，输出友好          |
+| SVG  | Python 标准库 XML / lxml | 完全掌控输出结构          |
+| PDF  | CairoSVG              | 从 SVG 转换 PDF      |
+| PPTX | python-pptx           | 生成原生形状、文本与连接线     |
+| 布局   | 自研规则布局，后续接 Graphviz   | MVP 减少复杂依赖        |
+| MCP  | 官方 MCP Python SDK v2  | 接入 Coding Agent   |
+| 测试   | pytest + pytest-cov   | 单元与端到端测试          |
+| 构建   | uv + hatchling        | 依赖和包管理            |
+
+几个经过核实的实现细节：
+
+- `python-pptx` 支持创建原生形状、文本框、连接线和分组，适合做真正可编辑的 PPTX。
+
+  [image](https://www.google.com/s2/favicons?domain=https://python-pptx.readthedocs.io\&sz=32)
+
+  python-pptx 1.0.0 documentation
+
+  +1
+
+- `CairoSVG` 提供 SVG→PDF 的 Python 接口。但需要额外验证字体嵌入、非 ASCII 文本和透明效果。
+
+  [image](https://www.google.com/s2/favicons?domain=https://cairosvg.org\&sz=32)
+
+  CairoSVG
+
+- 官方 MCP Python SDK 当前稳定线为 v2，主要服务端 API 是 `MCPServer`，而不是旧版的 `FastMCP`。
+
+  [image](https://www.google.com/s2/favicons?domain=https://py.sdk.modelcontextprotocol.io\&sz=32)
+
+  MCP Python SDK
+
+  +1
+
+- 原先考虑的 `svgwrite` 已处于停止维护状态，因此不建议把它作为 FigCraft 的长期核心依赖。
+
+  [image](https://www.google.com/s2/favicons?domain=https://github.com\&sz=32)
+
+  GitHub
+
+
+
+建议固定依赖版本并提交 `uv.lock`，让 Windows、macOS 和 Linux 的构建结果尽量一致。
+
+## 四、Figure IR v0.1 规范
+
+第一版建议采用 JSON 作为交换格式、磁盘源文件格式，并使用 Pydantic 进行严格校验。
+
+### 最小数据模型
+
+| 对象     | 关键字段                                                | 说明           |
+| ------ | --------------------------------------------------- | ------------ |
+| Figure | schema_version, canvas, nodes, edges, theme         | 顶层图形         |
+| Canvas | width, height, unit, margin                         | 物理画布尺寸，单位 mm |
+| Node   | id, type, x, y, width, height, label, style         | 图形元素         |
+| Edge   | id, source, target, source_port, target_port, style | 带语义连接关系的边    |
+| Group  | id, children, label                                 | 逻辑分组         |
+| Theme  | font_family, font_size, palette                     | 全局视觉规范       |
+
+首版所有几何坐标都采用毫米，字号采用 pt。内部统一换算，不能在不同渲染器里各自推测单位。
+
+### 示例：一个真正可用于实现的图形定义
+
+```
+
+{
+  "schema_version": "0.1",
+  "id": "method_pipeline",
+  "canvas": {
+    "width": 182,
+    "height": 58,
+    "unit": "mm",
+    "margin": 4
+  },
+  "theme": {
+    "font_family": "Arial",
+    "font_size_pt": 8,
+    "background": "#FFFFFF"
+  },
+  "nodes": [
+    {
+      "id": "input",
+      "type": "rounded_rect",
+      "label": "Input Video",
+      "x": 5,
+      "y": 18,
+      "width": 38,
+      "height": 20,
+      "style": {"fill": "#E8F0FE", "stroke": "#4275C4"}
+    },
+    {
+      "id": "encoder",
+      "type": "rounded_rect",
+      "label": "Video Encoder",
+      "x": 61,
+      "y": 18,
+      "width": 48,
+      "height": 20,
+      "style": {"fill": "#E5F4EC", "stroke": "#418968"}
+    },
+    {
+      "id": "output",
+      "type": "rounded_rect",
+      "label": "Prediction",
+      "x": 127,
+      "y": 18,
+      "width": 48,
+      "height": 20,
+      "style": {"fill": "#FCE8D8", "stroke": "#C17C43"}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_input_encoder",
+      "source": "input",
+      "target": "encoder",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {"stroke": "#444444", "arrow": "end"}
+    },
+    {
+      "id": "e_encoder_output",
+      "source": "encoder",
+      "target": "output",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {"stroke": "#444444", "arrow": "end"}
+    }
+  ],
+  "groups": []
+}
+
+```
+
+首版的 `x/y/width/height` 是确定的渲染坐标。自动布局时由布局器生成或更新这些数值，再交给三个导出后端消费。
+
+这样不会出现 SVG、PDF 和 PPTX 各自重新计算布局，导致导出形态不一致的问题。
+
+### 结构化修改的规则
+
+必须从第一版就定下来：
+
+- 所有对象具有稳定、唯一的 ID；修改样式不得改变 ID。
+- 禁止悬空连接；删除节点时必须显式处理相连的边。
+- Patch 操作先验证、后提交；失败时不能留下半张损坏的图。
+- 同一份 IR、同一字体环境和同一渲染器版本应产生确定性的布局与 SVG 输出。
+- 保留 `schema_version`，以后才能平滑迁移格式。
+
+## 五、MCP 与 Agent API 设计
+
+首版 MCP 工具控制在 7 个，不要把每一种小操作都暴露成单独工具。
+
+| MCP Tool           | 用途                  |
+| ------------------ | ------------------- |
+| `figcraft_create`  | 创建 Figure 项目        |
+| `figcraft_get`     | 读取当前图形及其对象          |
+| `figcraft_patch`   | 批量新增、修改、删除图元        |
+| `figcraft_layout`  | 自动排列节点、重新计算连线       |
+| `figcraft_render`  | 导出 SVG / PDF / PPTX |
+| `figcraft_lint`    | 返回图形质量问题            |
+| `figcraft_inspect` | 获取对象位置、尺寸、关系和属性     |
+
+其中最重要的是 `figcraft_patch`。它应该支持多个操作在同一事务里提交，并在操作失败时提供明确原因。
+
+### Agent 交互示例
+
+用户：
+
+> 给我画一个 LLaVA 的模块级 Unlearning 框架图，包含视觉编码器、连接器、LLM、Forget 和 Retain 两条分支。
+
+Agent 先构造布局和节点，然后调用 FigCraft MCP。
+
+首次创建后，返回结构化结果：
+
+```
+{
+  "figure_id": "llava_unlearning",
+  "revision": 1,
+  "nodes": 8,
+  "edges": 9,
+  "status": "valid"
+}
+```
+
+用户接着要求：
+
+> 把视觉编码器和连接器用虚线框成一个组，然后把 Forget 分支改成橙色。
+
+Agent 只需对已有项目执行 Patch。接口采用 `expected_revision` 避免多个 Agent 同时编辑时互相覆盖。
+
+```
+{
+  "figure_id": "llava_unlearning",
+  "expected_revision": 1,
+  "operations": [
+    {
+      "op": "add_group",
+      "id": "visual_stack",
+      "children": ["vision_encoder", "connector"],
+      "style": {"stroke_dash": "dashed"}
+    },
+    {
+      "op": "set_style",
+      "target": "forget_branch",
+      "style": {"fill": "#FCE4CF"}
+    }
+  ]
+}
+```
+
+成功后版本更新至 revision 2。渲染器再重新导出。
+
+特别重要： 不允许 Agent 直接向 IR 任意字段写入未经验证的数据。所有操作都必须经过 Schema 验证和对象完整性检查。
+
+### Agent Skill
+
+Skill 不承担核心引擎的实现，只负责指导 Agent 如何使用 FigCraft。
+
+应该覆盖四个流程：
+
+1. 从方法描述抽取模块和依赖关系。
+2. 生成一个合法且简洁的 Figure IR。
+3. 调用布局、渲染和 Lint，根据错误定向修改。
+4. 在质量检查通过后交付多格式产物。
+
+首版应该先提供跨平台的 CLI Skill，再开发 MCP 集成，这样可以复用已有能力，减少调试难度。
+
+## 六、FigCraft 项目目录
+
+```
+figcraft/
+├── pyproject.toml
+├── uv.lock
+├── README.md
+├── LICENSE
+├── CHANGELOG.md
+├── AGENTS.md
+│
+├── src/figcraft/
+│   ├── __init__.py
+│   ├── cli.py
+│   │
+│   ├── core/
+│   │   ├── models.py
+│   │   ├── schema.py
+│   │   ├── document.py
+│   │   ├── patch.py
+│   │   └── geometry.py
+│   │
+│   ├── layout/
+│   │   ├── linear.py
+│   │   ├── layered.py
+│   │   └── routing.py
+│   │
+│   ├── render/
+│   │   ├── svg.py
+│   │   ├── pdf.py
+│   │   └── pptx.py
+│   │
+│   ├── lint/
+│   │   ├── rules.py
+│   │   └── engine.py
+│   │
+│   ├── themes/
+│   │   └── academic.json
+│   │
+│   └── integrations/
+│       └── mcp_server.py
+│
+├── skills/
+│   └── figcraft/
+│       └── SKILL.md
+│
+├── examples/
+│   ├── basic_pipeline.json
+│   ├── model_architecture.json
+│   └── multi_branch.json
+│
+├── tests/
+│   ├── test_schema.py
+│   ├── test_patch.py
+│   ├── test_layout.py
+│   ├── test_svg.py
+│   ├── test_pdf.py
+│   ├── test_pptx.py
+│   └── test_mcp.py
+│
+└── docs/
+    ├── architecture.md
+    ├── figure-ir.md
+    ├── cli.md
+    ├── mcp.md
+    └── contributing.md
+```
+
+注意，MCP Server、CLI 和 Python API 应调用相同的 `core` 服务层，不能各写一套逻辑。
+
+## 七、开发路线与里程碑
+
+建议分成 5 个里程碑。以下是开发顺序和参考工期，不是必须严格遵守的日程。
+
+## M0
+
+项目骨架与 Schema
+
+半天–1 天
+
+初始化项目、测试、Lint 与 CI · 实现 Pydantic Figure IR · 完成基础 JSON 加载、保存、验证
+
+## M1
+
+真正可用的绘图引擎
+
+1–2 天
+
+实现基础图元与节点 ID · 水平、垂直自动布局 · 端口连接与直角箭头 · 原生 SVG 导出
+
+## M2
+
+出版级导出与 Lint
+
+1–2 天
+
+SVG → PDF · 原生形状 PPTX 输出 · 边界、溢出、重叠检测 · 字体与跨格式测试
+
+## M3
+
+Agent 接入
+
+1–2 天
+
+CLI 完整化 · 事务性 Patch API · 7 个 MCP Tool · FigCraft Agent Skill
+
+## M4
+
+示例、质量与发布
+
+1–2 天
+
+三种典型科研图 · 真实 Coding Agent 端到端测试 · Windows、macOS、Linux CI · README、安装说明和 v0.1.0 发布
+
+### 我建议采取的实现顺序
+
+不要同时让多个 Agent 修改核心模块。先建立 M0 的 Schema 和统一接口，再并行开发彼此独立的渲染器和测试。
+
+等到 SVG 和 PPTX 都能正确表达同一个 Figure IR，才开始大规模接入 Agent。
+
+原因是 FigCraft 最复杂的地方不是 MCP 或 CLI，而是图形几何、文字尺寸、连线定位和跨格式一致性。
+
+## 八、质量检查与验收标准
+
+这是 FigCraft 与普通 AI 绘图脚本拉开差距的重要模块。
+
+### Figure Lint v0.1
+
+| 规则    | 严重程度    | 检查内容        |
+| ----- | ------- | ----------- |
+| FC001 | Error   | 节点越过画布边界    |
+| FC002 | Error   | 重复 ID 或无效连接 |
+| FC003 | Error   | 文本超出节点边界    |
+| FC004 | Warning | 非预期节点重叠     |
+| FC005 | Warning | 正文字号低于配置阈值  |
+| FC006 | Warning | 箭头穿过非关联节点   |
+| FC007 | Warning | 字体无法解析或发生替代 |
+| FC008 | Warning | 存在未经声明的栅格图像 |
+
+需要为错误定义清楚的计算方式。比如文字溢出要使用字体度量，不能通过简单的“字符数 × 平均宽度”来判断。
+
+对于自动布局，还要支持允许重叠的合法场景，比如子节点位于组背景内部。
+
+### v0.1 发布验收
+
+Release Gate
+
+0/8 项
+
+Figure IR 能正确验证合法与非法输入
+
+同一份 IR 可以导出 SVG、PDF 和 PPTX
+
+SVG/PDF 图元非栅格化，PPTX 的框、文本和箭头可编辑
+
+三种示例图均无严重溢出和误连接
+
+对单节点改色后，其余节点属性保持不变
+
+错误 Patch 不修改原文件和 revision
+
+Agent 无人工修改 JSON 即可完成一次创建、修改、导出
+
+Windows、macOS、Linux 的自动化测试通过
+
+这是待执行的验收清单，不表示当前项目已经通过测试。
+
+除了这些测试，我建议额外设立三个工程要求：
+
+第一，视觉回归。 把 SVG 渲染为 PNG 做快照比较；像素差异用于发现回归，但需要结合平台字体差异，不能单纯依赖完全相同的像素哈希。
+
+第二，跨格式一致性。 对同一个图元检查 SVG 和 PPTX 的位置、尺寸、颜色和文本内容。设定几何坐标误差阈值，例如 0.2 mm；文字排版则单独做视觉检查。
+
+第三，安全性。 MCP 只能读写配置允许的工程目录；默认不读取任意外部文件，不通过 SVG 加载远程资源，不执行图形描述里包含的脚本。
+
+尤其不应该让通过 MCP 传入的输出路径直接覆盖用户其他项目文件。
+
+## 九、第一轮开发：可以直接交给 Coding Agent 的任务书
+
+下面这段是我建议直接发给 Codex、Claude Code、OpenCode 或 DeepSeek Harness 的初始开发指令。
+
+# FigCraft — v0.1.0 MVP 开发任务书
+
+你是一名资深 Python 工程师、图形系统工程师和开源项目维护者。
+
+请从零实现一个名为 **FigCraft** 的开源项目。
+
+## 1. 项目定位
+
+FigCraft = Agent-Native Scientific Figure Studio。
+
+目标是让 Coding Agent 使用结构化图形描述，创建、修改、检查和导出科研论文中的高质量矢量图。
+
+核心理念：
+
+- Figures as Code
+- Figure IR as the single source of truth
+- Deterministic rendering
+- Incremental semantic editing
+- Agent-native interfaces
+- Publication-ready exports
+
+不要实现普通的 Text-to-Image 工具，不要依赖图像生成模型直接输出最终论文图。
+
+## 2. 环境和工程要求
+
+- Python 3.11+
+- uv + pyproject.toml
+- Pydantic v2
+- Typer + Rich
+- python-pptx
+- CairoSVG
+- MCP Python SDK v2
+- pytest + pytest-cov
+- 采用 src-layout
+- 支持 Windows / macOS / Linux
+- 使用类型标注、清晰的模块边界和规范的错误处理
+- 不要在系统盘生成大型临时文件
+- 所有输出放在用户指定的项目或构建目录
+- 锁定依赖，并验证依赖 API，不复制过时的 MCP 示例
+
+## 3. 必须实现的模块
+
+### Core
+
+实现版本化的 Figure IR 数据模型，至少包含：
+
+- Canvas
+- Node
+- Edge
+- Group
+- Style
+- Theme
+- Figure
+
+实现 JSON 加载、保存、验证、唯一 ID 检查、连接引用检查。
+
+坐标使用 mm，字号使用 pt。定义统一的内部转换函数。
+
+### Patch
+
+实现语义化 Patch 引擎，支持：
+
+- add_node
+- remove_node
+- update_node
+- set_style
+- add_edge
+- remove_edge
+- add_group
+- update_label
+
+采用稳定 ID 和 revision，支持多个操作一次性提交。
+
+保证事务性：任意操作失败时，原文件保持不变。写入使用临时文件加原子替换；对跨进程同时写入提供文件锁或等效机制。
+
+### Layout
+
+实现：
+
+- horizontal layout
+- vertical layout
+- basic layered layout
+- orthogonal edge routing
+- center/left/right/top/bottom ports
+
+布局必须确定性，不依赖随机顺序。
+
+### Renderers
+
+实现 SVG、PDF、PPTX 三种输出。
+
+SVG 使用原生矢量元素，保持文本元素可编辑。
+
+PDF 从 SVG 矢量转换，不通过 PNG 中转。测试字体和矢量保留情况。
+
+PPTX 必须使用原生形状、文本框及连接线，不能将整个图作为图片插入。
+
+三个渲染器共用 Figure IR 和最终几何布局。
+
+### Lint
+
+至少实现：
+
+- 画布溢出
+- 无效 ID 或连接
+- 文字溢出
+- 非预期节点重叠
+- 字号阈值
+- 非法颜色
+- 不支持的字体
+
+返回机器可读取的 JSON 结果，包含规则 ID、严重程度、相关对象 ID 和描述。
+
+对无法可靠检查的规则，不要假装已经完成检测。
+
+### CLI
+
+实现：
+
+```
+figcraft --help
+figcraft init
+figcraft validate
+figcraft layout
+figcraft render
+figcraft lint
+figcraft inspect
+figcraft patch
+```
+
+所有命令必须支持清晰的退出码和错误信息。
+
+### MCP
+
+基于当前官方 MCP Python SDK v2。
+
+实现：
+
+- figcraft_create
+- figcraft_get
+- figcraft_patch
+- figcraft_layout
+- figcraft_render
+- figcraft_lint
+- figcraft_inspect
+
+MCP 必须调用相同的核心服务，不重复实现业务逻辑。
+
+默认使用 stdio，限制文件系统访问范围。
+
+### Agent Skill
+
+提供 skills/figcraft/SKILL.md。
+
+说明：
+
+- 如何从论文方法描述提取节点和连接
+- 如何创建合法的 Figure IR
+- 如何反复修改图形而不破坏已有布局
+- 如何使用 Lint 结果修复图形
+- 如何导出最终科研图
+
+## 4. 示例
+
+至少提供三个真实示例：
+
+1. Linear ML Pipeline
+2. Multi-Branch Model Architecture
+3. Video Unlearning Framework
+
+所有示例必须能导出 SVG、PDF、PPTX。
+
+## 5. 测试与验收
+
+为 Schema、Patch、Layout、SVG、PDF、PPTX、MCP 编写自动化测试。
+
+测试重点：
+
+- Schema 严格验证
+- Stable ID
+- Patch 回滚与并发冲突
+- 确定性布局
+- 几何坐标一致性
+- PPTX 原生图元可编辑
+- PDF 不发生整图栅格化
+- Lint 准确报告错误
+
+不要仅通过文件存在来判断导出成功。
+
+使用 GitHub Actions 测试 Windows、macOS、Linux。
+
+## 6. 开发顺序
+
+按 M0 → M1 → M2 → M3 → M4 执行。
+
+每完成一个里程碑：
+
+1. 运行相关测试。
+2. 修复失败项。
+3. 记录完成情况及尚未支持的功能。
+4. 保持 README 和示例同步更新。
+5. 再进入下一阶段。
+
+不要为了赶进度留下空实现、伪测试或静默跳过错误。
+
+## 7. 最终交付
+
+- 完整可安装的 Python 开源仓库
+- 命令行工具
+- Figure IR 规范
+- SVG / PDF / PPTX 渲染器
+- MCP Server
+- Agent Skill
+- 三个科研图示例
+- 自动化测试
+- README 和架构文档
+- v0.1.0 发布检查清单
+
+优先保证核心能力可靠，不要未经要求扩大到 Web 编辑器、图像理解模型或复杂的可视化平台。
+
+首先完成 M0，并以一张三模块 Pipeline 图验证 M1 的核心架构，再继续开发其他模块。
+
+## 十、最终希望实现的用户体验
+
+FigCraft 示例 · 从 IR 渲染出来的概念效果
+
+这是示意性的矢量图，不代表 FigCraft 的渲染器已经实现。
+
+最终使用方式是：你在 Agent 里描述想画的科研图，它创建图形，再根据你的反馈做局部修改；最后你在 PowerPoint 里仍然可以自由拖动、修改对象，或者直接把 PDF 放进 LaTeX 论文。
+
+## 我的最终建议
+
+FigCraft v0.1.0 的真正完成标志，不是写了多少代码，而是一个从头到尾的真实 Agent 测试：
+
+给 Agent 一段没有图的论文方法描述，让它生成图；接着连续要求修改布局、颜色、文字和分组；最终输出 SVG、PDF、PPTX，所有产物有效、无严重布局问题，且未指定修改的对象保持不变。
+
+如果这个场景能稳定跑通，FigCraft 就不仅仅是一个绘图脚本，而是一个具备独立价值的 Agent 工具。
+
+我建议把 结构化编辑的可靠性、出版级矢量导出和 Figure Lint 作为最早的三个卖点。网页版和更复杂的 AI 绘图能力可以留到 v0.2 以后。

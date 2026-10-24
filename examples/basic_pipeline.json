@@ -1,0 +1,91 @@
+{
+  "schema_version": "0.1",
+  "id": "basic_pipeline",
+  "revision": 3,
+  "canvas": {
+    "width": 91.53108249240451,
+    "height": 18.0,
+    "unit": "mm",
+    "margin": 4.0
+  },
+  "theme": {
+    "font_family": "Arial",
+    "font_size_pt": 8.0,
+    "palette": {},
+    "background": "#FFFFFF"
+  },
+  "nodes": [
+    {
+      "id": "input",
+      "type": "rounded_rect",
+      "label": "Input Video",
+      "x": 4.0,
+      "y": 4.0,
+      "w": 20.0,
+      "h": 10.0,
+      "style": {
+        "fill": "#E8F0FE",
+        "stroke": "#4275C4",
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "encoder",
+      "type": "rounded_rect",
+      "label": "Video Encoder",
+      "x": 34.0,
+      "y": 4.0,
+      "w": 23.53108249240451,
+      "h": 10.0,
+      "style": {
+        "fill": "#E5F4EC",
+        "stroke": "#418968",
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "output",
+      "type": "rounded_rect",
+      "label": "Prediction",
+      "x": 67.53108249240451,
+      "y": 4.0,
+      "w": 20.0,
+      "h": 10.0,
+      "style": {
+        "fill": "#FCE8D8",
+        "stroke": "#C17C43",
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_input_encoder",
+      "source": "input",
+      "target": "encoder",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": "#444444",
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_encoder_output",
+      "source": "encoder",
+      "target": "output",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": "#444444",
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    }
+  ],
+  "groups": []
+}
