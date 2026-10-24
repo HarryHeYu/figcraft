@@ -153,10 +153,16 @@ def test_load_tolerates_utf8_bom(tmp_path: Path, figure_dict: dict) -> None:
 
 
 def test_deeply_nested_json_is_a_clean_error(tmp_path: Path) -> None:
-    """A legal but 60k-level nested JSON array must not leak RecursionError."""
+    """A legal but 60k-level nested JSON array must never leak a RecursionError.
+
+    The failure mode differs by platform (CPython 3.14's json parser survives
+    nesting that raises RecursionError on 3.12/Windows): either the parser
+    raises RecursionError -> "too deep", or it parses and the schema rejects a
+    non-dict root. Both must surface as FigureValidationError.
+    """
     path = tmp_path / "deep.json"
     path.write_bytes(b"[" * 60000 + b"]" * 60000)
-    with pytest.raises(FigureValidationError, match="too deep"):
+    with pytest.raises(FigureValidationError):
         FigureDocument.load(path)
     assert read_revision(path) is None
 
