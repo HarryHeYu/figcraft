@@ -23,6 +23,8 @@ dependencies = [
     "rich>=13.0",
     "lxml>=5.3",
     "pillow>=11.0",
+    "reportlab>=5.1.0",
+    "python-pptx>=1.0.2",
 ]
 
 [project.scripts]

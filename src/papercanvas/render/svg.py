@@ -19,37 +19,29 @@ from papercanvas.core.errors import RenderError
 from papercanvas.core.geometry import pt_to_mm
 from papercanvas.core.models import Figure, Node, resolve_color
 from papercanvas.layout.routing import Point, route_orthogonal
+from papercanvas.render.style import (
+    DASH_PATTERNS,
+    DEFAULT_FILL,
+    DEFAULT_STROKE,
+    DEFAULT_TEXT_FILL,
+    GROUP_LABEL_OFFSET_MM,  # noqa: F401 - re-exported for tests/contract use
+    GROUP_PADDING_MM,  # noqa: F401 - re-exported for tests/contract use
+    round_corner_mm,
+    stroke_width_mm,
+)
+from papercanvas.render.style import (
+    fmt_number as _fmt,
+)
+from papercanvas.render.style import (
+    require_placed as _require_placed,
+)
 from papercanvas.text.text_layout import TextLayout
 
 SVG_NS = "http://www.w3.org/2000/svg"
 
-#: visual defaults for properties the IR leaves unset (nodes/edges/groups alike)
-DEFAULT_FILL = "#FFFFFF"
-DEFAULT_STROKE = "#444444"
-DEFAULT_STROKE_WIDTH_MM = 0.35
-DEFAULT_TEXT_FILL = "#000000"
-GROUP_LABEL_OFFSET_MM = 4.0
-GROUP_PADDING_MM = 3.0
-DASH_PATTERNS = {"dashed": "3 1.5", "dotted": "0.8 1.2"}
-ROUND_CORNER_MAX_MM = 3.0
-
-
-def _fmt(value: float) -> str:
-    """Deterministic compact number formatting (4 decimals, trailing zeros cut)."""
-    text = f"{value:.4f}".rstrip("0").rstrip(".")
-    return "0" if text in ("", "-0") else text
-
 
 def _q(name: str) -> str:
     return f"{{{SVG_NS}}}{name}"
-
-
-def _require_placed(fig: Figure) -> None:
-    unplaced = [node.id for node in fig.nodes if not node.is_placed]
-    if unplaced:
-        raise RenderError(
-            f"node(s) {unplaced} have no coordinates; run `papercanvas layout` first"
-        )
 
 
 def _resolve(value: str | None, theme, default: str) -> str:
@@ -90,9 +82,8 @@ def _polyline_points(points: list[Point]) -> str:
 
 
 def _round_corner(node: Node) -> str | None:
-    if node.type != "rounded_rect":
-        return None
-    return _fmt(min(ROUND_CORNER_MAX_MM, node.w / 4, node.h / 4))
+    radius = round_corner_mm(node)
+    return None if radius is None else _fmt(radius)
 
 
 def render_svg(fig: Figure, text_layout: TextLayout) -> bytes:
@@ -121,6 +112,7 @@ def render_svg(fig: Figure, text_layout: TextLayout) -> bytes:
     etree.SubElement(
         root,
         _q("rect"),
+        id="background",
         x="0",
         y="0",
         width=_fmt(fig.canvas.width),
@@ -137,6 +129,7 @@ def render_svg(fig: Figure, text_layout: TextLayout) -> bytes:
         x1 = max(c.x + c.w for c in children) + GROUP_PADDING_MM
         y1 = max(c.y + c.h for c in children) + GROUP_PADDING_MM
         attrs = {
+            "id": f"group:{group.id}",
             "x": _fmt(x0),
             "y": _fmt(y0),
             "width": _fmt(x1 - x0),
@@ -179,6 +172,7 @@ def render_svg(fig: Figure, text_layout: TextLayout) -> bytes:
         points = route_orthogonal(source, edge.source_port, target, edge.target_port)
         stroke = color_of_style(edge.style.stroke, DEFAULT_STROKE)
         attrs = {
+            "id": f"edge:{edge.id}",
             "points": _polyline_points(points),
             "fill": "none",
             "stroke": stroke,
@@ -192,6 +186,7 @@ def render_svg(fig: Figure, text_layout: TextLayout) -> bytes:
 
     for node in fig.nodes:
         attrs = {
+            "id": f"node:{node.id}",
             "x": _fmt(node.x),
             "y": _fmt(node.y),
             "width": _fmt(node.w),
@@ -229,10 +224,6 @@ def render_svg(fig: Figure, text_layout: TextLayout) -> bytes:
     return etree.tostring(
         etree.ElementTree(root), xml_declaration=True, encoding="UTF-8", pretty_print=True
     )
-
-
-def stroke_width_mm(stroke_width: float | None) -> float:
-    return DEFAULT_STROKE_WIDTH_MM if stroke_width is None else stroke_width
 
 
 def _text_attrs(theme) -> dict[str, str]:

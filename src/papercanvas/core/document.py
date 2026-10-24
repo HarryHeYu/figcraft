@@ -126,7 +126,14 @@ class FigureDocument:
         self.figure = figure
 
     @classmethod
-    def load(cls, path: str | os.PathLike[str]) -> FigureDocument:
+    def load(cls, path: str | os.PathLike[str], *, lenient: bool = False) -> FigureDocument:
+        """Load a figure document.
+
+        ``lenient=True`` skips the hard-rule check: the schema must still
+        parse, but structurally broken figures (dangling edges, duplicate
+        ids, ...) load anyway. Lint needs this to diagnose exactly those
+        figures; write and render paths must never use it.
+        """
         p = Path(path)
         try:
             raw = p.read_bytes()
@@ -150,7 +157,8 @@ class FigureDocument:
                 loc = ".".join(str(part) for part in err["loc"]) or "<root>"
                 lines.append(f"  - {loc}: {err['msg']}")
             raise FigureValidationError(lines) from exc
-        ensure_valid(figure)
+        if not lenient:
+            ensure_valid(figure)
         return cls(p, figure)
 
     @classmethod

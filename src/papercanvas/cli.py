@@ -22,7 +22,8 @@ from papercanvas.core.errors import (
 from papercanvas.core.models import Canvas, Figure
 from papercanvas.core.patch import PatchRequest, apply_patch
 from papercanvas.layout import run_layout
-from papercanvas.render import render_svg
+from papercanvas.lint import LintConfig, findings_to_json, lint_figure
+from papercanvas.render import RENDER_SUFFIXES, render_pdf, render_pptx, render_svg
 from papercanvas.text.text_layout import TextLayout
 from papercanvas.text.text_metrics import FontMetrics
 
@@ -43,6 +44,18 @@ class LayoutPreset(StrEnum):
     linear_h = "linear-h"
     linear_v = "linear-v"
     layered = "layered"
+
+
+class RenderFormat(StrEnum):
+    svg = "svg"
+    pdf = "pdf"
+    pptx = "pptx"
+    all = "all"
+
+
+class LintOutputFormat(StrEnum):
+    text = "text"
+    json = "json"
 
 
 def _version_callback(value: bool) -> None:
@@ -185,69 +198,151 @@ def _ensure_not_ir(target: Path, ir_path: Path) -> None:
     """Render output must never overwrite the single source of truth."""
     if target.exists() and target.resolve() == ir_path.resolve():
         raise RenderError(
-            f"refusing to write SVG over the IR file {ir_path}; choose another --out"
+            f"refusing to write rendered output over the IR file {ir_path}; "
+            f"choose another --out"
         )
+
+
+def _render_bytes(figure, text_layout, fmt: str) -> bytes:
+    if fmt == "svg":
+        return render_svg(figure, text_layout)
+    if fmt == "pdf":
+        return render_pdf(figure, text_layout)
+    if fmt == "pptx":
+        return render_pptx(figure, text_layout)
+    raise RenderError(f"unknown render format {fmt!r}")  # pragma: no cover
+
+
+def _render_formats(
+    figure, text_layout, formats: list[str], path: Path, out: Path | None
+) -> list[Path]:
+    """Render to each requested format; returns the written targets."""
+    if len(formats) > 1 and out is not None:
+        raise RenderError("--out with multiple formats is ambiguous; omit --out")
+    targets = []
+    for fmt in formats:
+        default = path.with_suffix(RENDER_SUFFIXES[fmt])
+        target = out if (out is not None and len(formats) == 1) else default
+        _ensure_not_ir(target, path)
+        atomic_write(target, _render_bytes(figure, text_layout, fmt))
+        targets.append(target)
+    return targets
 
 
 @app.command()
 def render(
     path: Annotated[Path, typer.Argument(help="Laid-out figure IR file.")],
+    format: Annotated[
+        RenderFormat,
+        typer.Option("--format", help="Output format(s)."),
+    ] = RenderFormat.svg,
     out: Annotated[
         Optional[Path],  # noqa: UP045 - typer handles Optional fine
-        typer.Option("--out", help="Output file (default: alongside the IR, .svg)."),
+        typer.Option("--out", help="Output file for a single format (default: alongside the IR)."),
     ] = None,
 ) -> None:
-    """Render the figure to SVG (strictly read-only on the IR)."""
-    target = out or path.with_suffix(".svg")
+    """Render the figure (strictly read-only on the IR)."""
+    formats = ["svg", "pdf", "pptx"] if format == RenderFormat.all else [format.value]
     try:
         doc = FigureDocument.load(path)
         text_layout = TextLayout(FontMetrics.for_family(doc.figure.theme.font_family))
-        svg_bytes = render_svg(doc.figure, text_layout)
-        _ensure_not_ir(target, path)
-        # temp + os.replace: even a hardlink alias that slips past the guard
-        # would only re-point this directory entry, never the IR inode
-        atomic_write(target, svg_bytes)
+        targets = _render_formats(doc.figure, text_layout, formats, path, out)
     except (PaperCanvasError, OSError) as exc:
         _fail(exc)
         return
-    console.print(f"[green]rendered[/green] {target} ({len(svg_bytes)} bytes)")
+    for target in targets:
+        console.print(f"[green]rendered[/green] {target} ({target.stat().st_size} bytes)")
 
 
 @app.command()
 def build(
     path: Annotated[Path, typer.Argument(help="Figure IR file.")],
     preset: Annotated[LayoutPreset, typer.Option(help="Layout preset.")] = LayoutPreset.linear_h,
+    format: Annotated[
+        RenderFormat,
+        typer.Option("--format", help="Output format(s)."),
+    ] = RenderFormat.svg,
     out: Annotated[
         Optional[Path],  # noqa: UP045
-        typer.Option("--out", help="Output file (default: alongside the IR, .svg)."),
+        typer.Option("--out", help="Output file for a single format (default: alongside the IR)."),
     ] = None,
 ) -> None:
-    """One command: layout (commits revision+1) then render to SVG."""
+    """One command: layout (commits revision+1) then render."""
     try:
         doc = FigureDocument.load(path)
         base_revision = doc.figure.revision
         laid_out = run_layout(doc.figure, preset.value)
         laid_out.revision = base_revision + 1
         doc.save_figure(laid_out, expected_revision=base_revision)
-    except (PaperCanvasError, OSError) as exc:
-        _fail(exc)
-        return
-
-    target = out or path.with_suffix(".svg")
-    try:
         text_layout = TextLayout(FontMetrics.for_family(laid_out.theme.font_family))
-        svg_bytes = render_svg(laid_out, text_layout)
-        _ensure_not_ir(target, path)
-        atomic_write(target, svg_bytes)
+        formats = ["svg", "pdf", "pptx"] if format == RenderFormat.all else [format.value]
+        targets = _render_formats(laid_out, text_layout, formats, path, out)
     except (PaperCanvasError, OSError) as exc:
         _fail(exc)
         return
     canvas = laid_out.canvas
+    rendered = ", ".join(str(target) for target in targets)
     console.print(
-        f"[green]built[/green] {target} — preset {preset.value}, revision "
-        f"{laid_out.revision}, canvas {canvas.width:g}×{canvas.height:g} mm, "
-        f"{len(svg_bytes)} bytes"
+        f"[green]built[/green] {rendered} — preset {preset.value}, revision "
+        f"{laid_out.revision}, canvas {canvas.width:g}×{canvas.height:g} mm"
     )
+
+
+@app.command()
+def lint(
+    path: Annotated[Path, typer.Argument(help="Figure IR file to inspect.")],
+    min_font_size: Annotated[
+        float, typer.Option(help="FC005 threshold: minimum acceptable font size (pt).")
+    ] = 6.0,
+    output_format: Annotated[
+        LintOutputFormat, typer.Option("--format", help="Human-readable or JSON output.")
+    ] = LintOutputFormat.text,
+) -> None:
+    """Check figure quality (FC001–FC008) — strictly read-only.
+
+    Exit code 1 means at least one Error-severity finding; warnings alone
+    still exit 0.
+    """
+    try:
+        # lenient load: lint is the diagnostic entry point for structurally
+        # broken figures (FC002 reports what hard validation would reject)
+        doc = FigureDocument.load(path, lenient=True)
+        text_layout = TextLayout(FontMetrics.for_family(doc.figure.theme.font_family))
+        try:
+            # FC008 inspects rendered output; rendering to memory is
+            # read-only. Best-effort: unplaced figures or hard-invalid
+            # colors skip the scan (FC002 reports the root cause instead).
+            svg_bytes = _render_bytes(doc.figure, text_layout, "svg")
+        except (RenderError, ValueError):
+            svg_bytes = None
+        findings = lint_figure(
+            doc.figure,
+            text_layout,
+            config=LintConfig(min_font_size_pt=min_font_size),
+            svg_bytes=svg_bytes,
+        )
+    except (PaperCanvasError, OSError) as exc:
+        _fail(exc)
+        return
+
+    if output_format == LintOutputFormat.json:
+        typer.echo(json.dumps(findings_to_json(findings), ensure_ascii=False, indent=2))
+    else:
+        report = findings_to_json(findings)
+        for finding in findings:
+            color = "red" if finding.severity == "error" else "yellow"
+            scope = f" [{finding.object_id}]" if finding.object_id else ""
+            console.print(
+                f"[{color}]{finding.rule_id}[/] {finding.severity}{scope}: {finding.message}"
+            )
+        if not findings:
+            console.print("[green]clean[/green] — no findings")
+        console.print(
+            f"{report['summary']['errors']} error(s), {report['summary']['warnings']} warning(s)"
+        )
+
+    if any(finding.severity == "error" for finding in findings):
+        raise typer.Exit(EXIT_ERROR)
 
 
 def main() -> None:

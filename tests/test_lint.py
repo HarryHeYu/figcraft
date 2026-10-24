@@ -1,0 +1,156 @@
+"""Lint rules FC001–FC008 and the engine contract."""
+
+from __future__ import annotations
+
+import pytest
+
+from papercanvas.core.models import Figure
+from papercanvas.lint import ERROR, WARNING, LintConfig, findings_to_json, lint_figure
+from papercanvas.lint.rules import RULE_ORDER
+from papercanvas.render import render_svg
+from papercanvas.text.text_layout import TextLayout
+from papercanvas.text.text_metrics import FontMetrics
+
+
+@pytest.fixture
+def layout(figure_dict: dict) -> TextLayout:
+    return TextLayout(FontMetrics.for_family(figure_dict["theme"]["font_family"]))
+
+
+def _lint(fig: Figure, layout: TextLayout, **kwargs):
+    return lint_figure(fig, layout, **kwargs)
+
+
+def _ids(findings, rule_id: str):
+    return [f for f in findings if f.rule_id == rule_id]
+
+
+def test_clean_figure_has_no_findings(figure_dict: dict, layout: TextLayout) -> None:
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    assert findings == []
+
+
+def test_fc001_node_outside_canvas(figure_dict: dict, layout: TextLayout) -> None:
+    figure_dict["nodes"][0]["x"] = figure_dict["canvas"]["width"] - 5  # w=30 > 5 left
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    hits = _ids(findings, "FC001")
+    assert hits and hits[0].severity == ERROR and hits[0].object_id == "a"
+
+
+def test_fc001_unplaced_nodes_are_skipped(figure_dict: dict, layout: TextLayout) -> None:
+    figure_dict["nodes"][0].update({"x": None, "y": None, "w": None, "h": None})
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    assert _ids(findings, "FC001") == []
+
+
+def test_fc002_flags_api_constructed_invalid_figure(figure_dict: dict, layout: TextLayout) -> None:
+    figure_dict["edges"][0]["target"] = "ghost"
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    hits = _ids(findings, "FC002")
+    assert hits and hits[0].severity == ERROR
+    assert "ghost" in hits[0].message
+
+
+def test_fc003_text_overflow_uses_font_metrics(figure_dict: dict, layout: TextLayout) -> None:
+    figure_dict["nodes"][0].update({"label": "A Very Long Module Label", "w": 12, "h": 6})
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    hits = _ids(findings, "FC003")
+    assert hits and hits[0].severity == ERROR and hits[0].object_id == "a"
+    assert "overflows" in hits[0].message
+
+
+def test_fc004_overlapping_nodes_warn(figure_dict: dict, layout: TextLayout) -> None:
+    figure_dict["nodes"][1].update({"x": 20, "y": 22})  # intersects node a
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    hits = _ids(findings, "FC004")
+    assert hits and hits[0].severity == WARNING
+
+
+def test_fc004_group_box_is_not_an_overlap(figure_dict: dict, layout: TextLayout) -> None:
+    """Children inside their group's background box must not be flagged."""
+    figure_dict["groups"].append({"id": "g1", "children": ["a", "b"]})
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    assert _ids(findings, "FC004") == []
+
+
+def test_fc005_font_size_below_threshold(figure_dict: dict, layout: TextLayout) -> None:
+    figure_dict["theme"]["font_size_pt"] = 5.0
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    hits = _ids(findings, "FC005")
+    assert hits and hits[0].severity == WARNING
+    # and it respects the configured threshold
+    findings = _lint(
+        Figure.model_validate(figure_dict), layout, config=LintConfig(min_font_size_pt=4.0)
+    )
+    assert _ids(findings, "FC005") == []
+
+
+def test_fc006_arrow_through_unrelated_node(figure_dict: dict, layout: TextLayout) -> None:
+    """a -> c routed straight across the middle node b must be flagged."""
+    figure_dict["nodes"] = [
+        {"id": "a", "x": 10, "y": 20, "w": 20, "h": 10},
+        {"id": "b", "x": 45, "y": 20, "w": 20, "h": 10},
+        {"id": "c", "x": 80, "y": 20, "w": 20, "h": 10},
+    ]
+    figure_dict["edges"] = [{"id": "e1", "source": "a", "target": "c"}]
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    hits = _ids(findings, "FC006")
+    assert hits and hits[0].severity == WARNING and hits[0].object_id == "e1"
+
+
+def test_fc006_clean_routing_not_flagged(figure_dict: dict, layout: TextLayout) -> None:
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    assert _ids(findings, "FC006") == []
+
+
+def test_fc007_substituted_font_warns(figure_dict: dict, layout: TextLayout) -> None:
+    figure_dict["theme"]["font_family"] = "No Such Font Family 12345"
+    fig = Figure.model_validate(figure_dict)
+    custom = TextLayout(FontMetrics.for_family(fig.theme.font_family))
+    assert custom.metrics.substituted
+    findings = _lint(fig, custom)
+    hits = _ids(findings, "FC007")
+    assert hits and hits[0].severity == WARNING
+
+
+def test_fc008_scans_rendered_svg_for_images(figure_dict: dict, layout: TextLayout) -> None:
+    fig = Figure.model_validate(figure_dict)
+    assert _lint(fig, layout, svg_bytes=render_svg(fig, layout)) == []
+    dirty = b'<svg><image href="x.png"/><text>a</text></svg>'
+    hits = _lint(fig, layout, svg_bytes=dirty)
+    assert hits and hits[0].rule_id == "FC008" and hits[0].severity == WARNING
+
+
+def test_fc008_without_svg_bytes_reports_nothing(figure_dict: dict, layout: TextLayout) -> None:
+    assert _lint(Figure.model_validate(figure_dict), layout) == []
+
+
+def test_findings_order_is_deterministic(figure_dict: dict, layout: TextLayout) -> None:
+    figure_dict["nodes"][0]["x"] = 999
+    figure_dict["nodes"][1].update({"x": 20, "y": 22})
+    fig = Figure.model_validate(figure_dict)
+    first = _lint(fig, layout)
+    second = _lint(fig, layout)
+    assert first == second
+    assert [f.rule_id for f in first] == sorted(
+        (f.rule_id for f in first), key=RULE_ORDER.index
+    )
+
+
+def test_findings_to_json_shape(figure_dict: dict, layout: TextLayout) -> None:
+    figure_dict["edges"][0]["target"] = "ghost"
+    report = findings_to_json(_lint(Figure.model_validate(figure_dict), layout))
+    assert report["summary"]["errors"] >= 1
+    assert report["summary"]["warnings"] == len(report["findings"]) - report["summary"]["errors"]
+    for finding in report["findings"]:
+        assert set(finding) == {"rule_id", "severity", "message", "object_id"}
+
+
+def test_lint_never_writes_the_source(figure_dict: dict, layout: TextLayout, tmp_path) -> None:
+    from papercanvas.core.document import FigureDocument
+
+    path = tmp_path / "fig.json"
+    FigureDocument.create(path, Figure.model_validate(figure_dict))
+    before = path.read_bytes()
+    _lint(FigureDocument.load(path).figure, layout, svg_bytes=b"<svg/>")
+    assert path.read_bytes() == before

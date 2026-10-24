@@ -83,6 +83,62 @@ fixes closed:
   strings coerce identically on `add_node` and `update_node`; word-wrap no
   longer leaves trailing spaces on broken lines.
 
+### Added — M2 (publication-grade exports + lint)
+
+- **PDF renderer** (`render/pdf.py`, reportlab): direct vector output — no
+  SVG conversion, no rasterization. Embedded TTF subsets, mm→pt via
+  core.geometry, y-axis flip, dash patterns, arrowhead triangles matching
+  the SVG marker geometry, `invariant=1` + pinned metadata for
+  byte-deterministic output.
+- **PPTX renderer** (`render/pptx.py`, python-pptx): fully editable native
+  shapes — rectangles / rounded rects with adjustments, one STRAIGHT
+  connector per routed segment (constraint 4: never a single elbow),
+  arrowheads set on `a:ln` in schema order, one textbox per TextLayout line
+  (word wrap disabled so PowerPoint re-wraps nothing), named shapes
+  (`node:<id>`, `edge:<id>#seg<i>`) for tooling. Slide sizes honor the
+  OOXML 1-inch floor (smaller canvases get padding, coordinates unchanged).
+  Zip entries carry pinned timestamps and core properties are fixed ->
+  byte-deterministic files.
+- **Figure Lint** (`lint/`): FC001 canvas bounds (error), FC002 invalid
+  structure (error), FC003 label overflow via font metrics (error), FC004
+  unexpected node overlap (warning), FC005 font size threshold (warning,
+  configurable), FC006 arrow through unrelated node via Liang-Barsky
+  (warning), FC007 font substitution (warning), FC008 undeclared raster
+  images in rendered output (warning). Machine-readable JSON output
+  (`lint --format json`); lint loads leniently so it can diagnose figures
+  that hard validation would reject; strictly read-only.
+- **CLI**: `render`/`build` now accept `--format svg|pdf|pptx|all`; new
+  `lint` command with `--min-font-size` and text/JSON output.
+- Cross-format consistency: node geometry agrees across SVG/PDF/PPTX
+  within ~4×10⁻⁵ mm (independently verified; the acceptance bar is
+  0.2 mm). Determinism holds for all three formats across processes.
+
+### Fixed — M2 verification round
+
+- **[P1]** `papercanvas lint` crashed with a traceback on schema-valid but
+  hard-invalid figures (e.g. bad color) during the FC008 pre-render —
+  that is exactly the case lint must diagnose; the pre-render is now
+  best-effort and FC002 reports the root cause.
+- **[P1]** PPTX `arrow: "both"` on a single-segment edge emitted `a:tailEnd`
+  before `a:headEnd`, violating the CT_LineProperties schema sequence;
+  arrowheads are now inserted in schema order.
+- **[P2]** PDF font registration cached by sanitized name only — two
+  families sanitizing identically but resolving to different files got the
+  wrong glyphs embedded in long-lived processes; the cache key now includes
+  the resolved font file.
+- **[P2]** Group style with explicitly-nulled stroke/dash rendered
+  differently per format (PPTX kept group defaults); all three backends
+  now share the same None-resolution.
+
+### Known limitations (v0.1)
+
+- PDF: CJK/emoji labels render as .notdef boxes when the resolved font has
+  no glyphs (Arial). SVG/PPTX are unaffected (viewer font fallback).
+  CJK-capable font fallback is planned for M3 together with an FC007
+  glyph-coverage extension.
+- Lint FC003 covers node labels; group-label overflow is deliberate out of
+  scope until M3.
+
 ### Fixed — second verification round (2026-10-24)
 
 The three verification agents re-audited the fixes (constraint audit

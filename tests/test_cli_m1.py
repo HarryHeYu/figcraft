@@ -155,6 +155,89 @@ def test_patch_deeply_nested_ops_file_is_clean(tmp_path: Path, figure_dict: dict
     assert ir.read_bytes() == before
 
 
+# -- M2: multi-format render + lint -----------------------------------------
+
+
+def test_render_all_formats(tmp_path: Path) -> None:
+    ir = _write(tmp_path / "pipeline.json", PIPELINE)
+    result = runner.invoke(app, ["build", str(ir), "--format", "all"])
+    assert result.exit_code == 0, result.output
+    for suffix in (".svg", ".pdf", ".pptx"):
+        artifact = tmp_path / f"pipeline{suffix}"
+        assert artifact.exists() and artifact.stat().st_size > 0
+    assert (tmp_path / "pipeline.pdf").read_bytes().startswith(b"%PDF")
+    pptx_bytes = (tmp_path / "pipeline.pptx").read_bytes()
+    assert pptx_bytes.startswith(b"PK")  # OOXML zip container
+
+
+def test_render_single_format_with_out(tmp_path: Path) -> None:
+    ir = _write(tmp_path / "pipeline.json", PIPELINE)
+    runner.invoke(app, ["build", str(ir)])  # lay it out first
+    result = runner.invoke(
+        app, ["render", str(ir), "--format", "pdf", "--out", str(tmp_path / "custom.pdf")]
+    )
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "custom.pdf").exists()
+
+
+def test_render_multi_format_rejects_out(tmp_path: Path) -> None:
+    ir = _write(tmp_path / "pipeline.json", PIPELINE)
+    result = runner.invoke(
+        app, ["render", str(ir), "--format", "all", "--out", str(tmp_path / "x.svg")]
+    )
+    assert result.exit_code == 1
+    assert "ambiguous" in result.output
+
+
+def test_lint_clean_figure(tmp_path: Path) -> None:
+    ir = _write(tmp_path / "pipeline.json", PIPELINE)
+    runner.invoke(app, ["build", str(ir)])  # lay it out first
+    result = runner.invoke(app, ["lint", str(ir)])
+    assert result.exit_code == 0, result.output
+    assert "0 error(s)" in result.output
+
+
+def test_lint_reports_errors_with_exit_1(tmp_path: Path, figure_dict: dict) -> None:
+    figure_dict["nodes"][0].update({"label": "A Very Long Module Label", "w": 12, "h": 6})
+    ir = _write(tmp_path / "fig.json", figure_dict)
+    result = runner.invoke(app, ["lint", str(ir)])
+    assert result.exit_code == 1
+    assert "FC003" in result.output
+
+
+def test_lint_json_output_is_machine_readable(tmp_path: Path, figure_dict: dict) -> None:
+    figure_dict["edges"][0]["target"] = "ghost"  # FC002
+    ir = _write(tmp_path / "fig.json", figure_dict)
+    result = runner.invoke(app, ["lint", str(ir), "--format", "json"])
+    assert result.exit_code == 1
+    report = json.loads(result.output[result.output.index("{") :])
+    assert report["summary"]["errors"] >= 1
+    finding = report["findings"][0]
+    assert set(finding) == {"rule_id", "severity", "message", "object_id"}
+    assert any(f["rule_id"] == "FC002" for f in report["findings"])
+
+
+def test_lint_is_read_only(tmp_path: Path, figure_dict: dict) -> None:
+    ir = _write(tmp_path / "fig.json", figure_dict)
+    before = ir.read_bytes()
+    result = runner.invoke(app, ["lint", str(ir)])
+    assert result.exit_code == 0
+    assert ir.read_bytes() == before
+
+
+def test_lint_diagnoses_hard_invalid_figures(tmp_path: Path, figure_dict: dict) -> None:
+    """Regression: lint must reach FC002 on schema-valid but hard-invalid
+    figures (bad color) instead of crashing in the FC008 pre-render."""
+    figure_dict["nodes"][0]["style"]["fill"] = "#not-a-color"
+    ir = _write(tmp_path / "fig.json", figure_dict)
+    before = ir.read_bytes()
+    result = runner.invoke(app, ["lint", str(ir)])
+    _assert_clean_error(result)
+    assert "FC002" in result.output
+    assert "#not-a-color" in result.output
+    assert ir.read_bytes() == before
+
+
 def test_render_without_coordinates_hints_layout(tmp_path: Path) -> None:
     ir = _write(tmp_path / "pipeline.json", PIPELINE)
     result = runner.invoke(app, ["render", str(ir)])
