@@ -5,6 +5,29 @@ All notable changes to PaperCanvas are documented here. Format based on
 
 ## [0.1.0] — 2026-10-25 (release candidate built & verified; PyPI publication pending approval)
 
+### Changed — open-source hardening round (2026-10-25)
+
+- **Obstacle-aware orthogonal routing**: edges now detour around unrelated
+  nodes deterministically (fixed-order channel candidates); FC006 warns only
+  for genuinely unavoidable crossings. Without crossings the routed paths
+  are byte-identical to the previous implementation.
+- **CJK support**: figures with CJK labels are measured and rendered with a
+  glyph-covering system font (SimHei / MS YaHei / SimSun / Arial Unicode /
+  STHeiti / WQY per platform); PDF embeds a TrueType subset (TTC supported
+  via subfontIndex). CFF-only environments get an actionable PDF error —
+  use SVG/PPTX there. FC007 names the substitute and the reason.
+- **README overhauled** for new users: badges, inline example previews
+  (real committed SVG artifacts), 60-second quickstart, full CLI reference,
+  MCP configuration for Claude Code / Codex CLI / OpenCode, capability and
+  limitation summary. README JSON examples stay covered by automated tests.
+- **Community & docs**: CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md,
+  issue/PR templates, docs/architecture.md, docs/versioning.md.
+- **CI**: added a wheel-install smoke job (build → twine check → fresh-venv
+  install → CLI flow → real MCP stdio smoke) alongside the platform matrix.
+- **Security regression tests**: symlink escape rejection, cross-drive
+  absolute paths, CLI root-policy freedom documented (enforce_root=False).
+
+
 Everything below shipped in v0.1.0. See [RELEASE_NOTES.md](RELEASE_NOTES.md)
 for the user-facing summary and `docs/release-checklist.md` for the
 acceptance evidence.

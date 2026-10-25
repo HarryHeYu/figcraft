@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a defect in the papercanvas CLI, MCP server, renderers, layout or IR handling.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        PaperCanvas is pre-1.0 (`0.1.x` release candidate; PyPI publication
+        pending). Please test against the latest `main` before filing.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the defect. Note especially whether any file was written when it should not have been.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: |
+        Minimal CLI/MCP commands, or the Figure IR JSON that triggers it.
+        IR snippets are ideal — the IR is the single source of truth.
+      placeholder: |
+        uv run papercanvas patch figure.json --ops '...'
+    validations:
+      required: true
+  - type: textarea
+    id: expected-actual
+    attributes:
+      label: Expected vs actual
+      description: What you expected and what actually happened. (Determinism contract — same IR + same font + same version must give byte-identical output.)
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Output of `uv run papercanvas --version` (or `papercanvas --version` after install), your Python version, and OS.
+      placeholder: |
+        papercanvas 0.1.0
+        Python 3.12.x, Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / lint output
+      description: Full traceback, or `uv run papercanvas lint <file> --format json` output if applicable.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues for duplicates.
+        - label: I can reproduce this with the latest `main` (or the newest published 0.1.x).

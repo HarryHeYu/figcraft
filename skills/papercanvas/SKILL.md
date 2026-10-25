@@ -144,5 +144,9 @@ operation, retry. Check `ok` before trusting a result.
 - Same IR + same fonts ⇒ byte-identical output; safe to re-export and
   diff. Do not try to preserve hand-tweaks inside SVG/PDF/PPTX files — they
   are products, not sources.
+- Font substitution is reported by lint (FC007): when a machine lacks the
+  requested font (or its CJK glyphs), PaperCanvas measures against a
+  substitute. Line breaks stay correct for THAT substitute — re-render on
+  the delivery machine, and tell the user which font was substituted.
 - Revision conflicts mean another writer committed since you loaded:
   re-read with `get`/`inspect`, redo your patch on the new state.

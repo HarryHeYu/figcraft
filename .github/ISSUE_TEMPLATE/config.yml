@@ -1,0 +1,9 @@
+# Blank issues are disabled: this repository has no GitHub Discussions, and
+# structured reports keep the pre-1.0 backlog triageable. Bug reports and
+# feature requests must use the templates; questions about the Figure IR or
+# the MCP server are usually answered by docs/figure-ir.md and docs/mcp.md.
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation (Figure IR, MCP, release checklist)
+    url: https://github.com/HarryHeYu/figcraft/tree/main/docs
+    about: The IR spec, MCP setup and design documents — many questions are answered here before filing an issue.

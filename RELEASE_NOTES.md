@@ -46,9 +46,11 @@ papercanvas-mcp --root path/to/project
 
 ## 已知限制（v0.1）
 
-1. **PDF 的 CJK/emoji 字形**：解析到的字体（如 Arial）不含 CJK 字形时，
-   PDF 中渲染为 .notdef 方框；SVG/PPTX 由查看器做字体回退，不受影响。
-   计划：CJK 字体回退 + FC007 字形覆盖率检查。
+1. **PDF 的 CJK 字形依赖本机字体**：含中文标签的图会自动改用系统 CJK
+   字体度量与嵌入（Windows：SimHei/微软雅黑/SimSun；macOS：Arial Unicode/
+   STHeiti；Linux：WQY/Noto），FC007 会报告替代。仅有 CFF 格式 CJK 字体
+   （如部分 Noto CJK）的机器上 PDF 导出会给出明确报错（请改用 SVG/PPTX）；
+   emoji 在 PDF 中仍为 .notdef 方框。
 2. **PPTX→IR 不做反向同步**：PPTX 是产物，可在 PowerPoint 中自由编辑，
    但修改不会回流 IR。
 3. **正交路由无避障**：连线可能穿过无关节点，lint FC006 事后提示。

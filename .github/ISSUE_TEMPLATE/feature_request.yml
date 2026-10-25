@@ -1,0 +1,31 @@
+name: Feature request
+description: Propose an enhancement to the Figure IR, layout, renderers, lint, CLI or MCP tools.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem scenario
+      description: What figure or agent workflow is blocked today? A concrete scientific-figure example helps a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would change — IR fields, layout behavior, a lint rule (FC0xx), a CLI command or an MCP tool.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches, including workarounds outside papercanvas.
+  - type: checkboxes
+    id: compatibility
+    attributes:
+      label: Compatibility
+      description: See docs/versioning.md — the Figure IR carries a schema_version, and 0.1 readers accept only "0.1"; unknown fields are rejected.
+      options:
+        - label: This proposal would require Figure IR schema changes (new/changed fields or semantics).
+        - label: I understand pre-1.0 breaking changes may land in a minor release with a CHANGELOG migration note.

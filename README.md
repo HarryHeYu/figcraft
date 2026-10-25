@@ -1,104 +1,133 @@
 # PaperCanvas
 
-**Agent-Native Scientific Figure Studio** — Figures as Code, Agents as Artists.
+**Agent-native scientific figure engine.** Create, edit, and export
+publication-ready **SVG, PDF & PPTX** with MCP, CLI, and structured patches —
+the figure stays editable vector, never a bitmap.
 
-PaperCanvas lets coding agents draw, edit, and maintain scientific paper figures
-the way they write code: a versioned **Figure IR** (JSON) is the single source of
-truth, agents modify it only through semantic patches, and deterministic
-renderers turn it into true-vector, editable **SVG / PDF / PPTX**.
+[![CI](https://github.com/HarryHeYu/figcraft/actions/workflows/ci.yml/badge.svg)](https://github.com/HarryHeYu/figcraft/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230)
 
-> Naming note: the GitHub repository lives at `HarryHeYu/figcraft` (same name as
-> the local working folder); the PyPI package, CLI and MCP tool prefix are and
-> stay **`papercanvas`** — the clean, collision-free name on PyPI.
+A versioned **Figure IR** (JSON) is the single source of truth. Coding agents
+modify it through semantic patches — change one node without re-drawing the
+figure — and deterministic renderers produce true-vector output for papers,
+theses, and slides.
 
-## Naming (final decision)
+## What it looks like
 
-| Surface | Name | Notes |
+Real rendered output from the bundled examples (committed SVGs, shown inline):
+
+<p>
+  <img src="examples/basic_pipeline.svg" width="32%" alt="Linear ML pipeline: Input Video to Video Encoder to Prediction" />
+  <img src="examples/video_unlearning.svg" width="32%" alt="Video unlearning framework with Forget and Retain heads" />
+  <img src="examples/multi_branch.svg" width="32%" alt="Multi-branch architecture with a Dual Branch group" />
+</p>
+
+| Example | Figure | Sources |
 |---|---|---|
-| GitHub repository | `HarryHeYu/figcraft` | chosen by the author; matches the local folder |
-| PyPI package / install | `pip install papercanvas` | verified available; no name collisions |
-| CLI executable | `papercanvas` | `uv run papercanvas --help` |
-| MCP server & tool prefix | `papercanvas_*` | `papercanvas_create/get/patch/layout/render/lint/inspect` |
-| Python package import | `papercanvas` | `from papercanvas.core import Figure` |
+| [basic_pipeline](examples/basic_pipeline.json) | Linear ML pipeline | [SVG](examples/basic_pipeline.svg) · [PDF](examples/basic_pipeline.pdf) · [PPTX](examples/basic_pipeline.pptx) |
+| [video_unlearning](examples/video_unlearning.json) | Video unlearning framework | [SVG](examples/video_unlearning.svg) · [PDF](examples/video_unlearning.pdf) · [PPTX](examples/video_unlearning.pptx) |
+| [multi_branch](examples/multi_branch.json) | Multi-branch architecture with grouped heads | [SVG](examples/multi_branch.svg) · [PDF](examples/multi_branch.pdf) · [PPTX](examples/multi_branch.pptx) |
 
-"FigCraft" is the historical project codename and appears only in the GitHub
-repository name; every user-facing surface (install, command, import, MCP
-tools) is `papercanvas`. The v0.1.0 PyPI release (M4) will publish under
-`papercanvas`.
+## Why PaperCanvas
 
-## Status
+- **Agent-native**: seven MCP tools plus a CLI on one shared service layer —
+  agents patch figures incrementally; untouched objects never move.
+- **Figure IR as the single source of truth**: SVG/PDF/PPTX are build
+  products; nothing is hand-edited, everything is reproducible.
+- **Transactional semantic patches**: nine operations applied all-or-nothing
+  with revision control — a failed patch leaves the file byte-identical.
+- **Truly vector, truly editable**: SVG `<text>`, PDF with embedded TTF
+  subsets, PPTX with native shapes/connectors — no rasterization anywhere.
+- **Deterministic**: same IR + same fonts ⇒ byte-identical output; safe to
+  re-export and diff.
+- **Quality lint built in**: FC001–FC008 (overflow, overlap, arrows through
+  nodes, font substitution, …) with machine-readable JSON output.
 
-v0.1.0 development — milestone plan in [PROJECT-PLAN.md](PROJECT-PLAN.md).
-
-- [x] M0 — project skeleton, Figure IR schema + hard validation, transactional patch engine, CLI `init`/`validate`
-- [x] M1 — TextLayout, linear/layered layout, orthogonal routing, SVG renderer, CLI `layout`/`render`/`patch`/`build`
-- [x] M2 — PDF (reportlab), PPTX (python-pptx native shapes), Lint FC001–FC008, cross-format consistency ≤0.2 mm
-- [x] M3 — shared service layer, MCP server (`papercanvas-mcp`, 7 tools), Agent Skill, real-agent end-to-end acceptance
-- [x] M4 — three examples, MCP protocol e2e, Release Gate automation, docs, v0.1.0-ready (239 tests green)
-
-## Install
+## 60-second quickstart
 
 ```bash
 pip install papercanvas        # PyPI publication pending final approval
-```
-
-For development:
-
-```bash
+# for now, from a clone:
 uv sync
-uv run pytest
-uv run papercanvas --help
+
+papercanvas init figures.json --id demo
+papercanvas patch figures.json --ops ops.json   # add nodes & edges
+papercanvas layout figures.json --preset layered
+papercanvas lint figures.json
+papercanvas render figures.json --format all
+# -> figures.svg figures.pdf figures.pptx
 ```
 
-## Quick start
+Try it without writing anything:
 
 ```bash
 uv run papercanvas build examples/basic_pipeline.json --format all
-# -> examples/basic_pipeline.{svg,pdf,pptx} (layout commits revision+1)
 uv run papercanvas lint examples/basic_pipeline.json
-uv run papercanvas inspect examples/basic_pipeline.json
 ```
 
-## Known limitations (v0.1)
+## CLI
 
-1. **PDF CJK/emoji glyphs**: when the resolved font has no CJK coverage
-   (e.g. Arial), PDF output renders those glyphs as .notdef boxes; SVG and
-   PPTX are unaffected (viewer-side font fallback). CJK font fallback and an
-   FC007 glyph-coverage extension are planned.
-2. **No PPTX→IR sync**: the PPTX is a product — edit it freely in
-   PowerPoint, but changes do not flow back into the Figure IR.
-3. **No obstacle avoidance in routing**: an edge may cross unrelated nodes;
-   lint rule FC006 reports it after the fact.
-4. **Group labels do not auto-wrap** (explicit `\n` is honored).
-5. `canvas.unit` is `mm` only; `schema_version` is `"0.1"` only.
+```
+papercanvas init PATH --id FIGURE_ID [--width] [--height] [--margin]
+papercanvas validate PATH
+papercanvas patch PATH --ops ops.json        # {"operations": [...], "expected_revision": N}
+papercanvas layout PATH --preset linear-h|linear-v|layered
+papercanvas lint PATH [--min-font-size PT] [--format text|json]
+papercanvas inspect PATH [OBJECT_ID] [--format text|json]
+papercanvas render PATH [--format svg|pdf|pptx|all] [--out FILE]
+papercanvas build PATH [--preset ...] [--format ...]   # layout + render in one command
+```
 
-## Known limitations (v0.1)
+Every mutating command is transactional: validation errors leave the file
+byte-identical; successes bump `revision` by one.
 
-1. **PDF CJK/emoji glyphs**: when the resolved font has no CJK coverage
-   (e.g. Arial), PDF output renders those glyphs as .notdef boxes; SVG and
-   PPTX are unaffected (viewer-side font fallback). CJK font fallback and an
-   FC007 glyph-coverage extension are planned.
-2. **No PPTX→IR sync**: the PPTX is a product — edit it freely in
-   PowerPoint, but changes do not flow back into the Figure IR.
-3. **No obstacle avoidance in routing**: an edge may cross unrelated nodes;
-   lint rule FC006 reports it after the fact.
-4. **Group labels do not auto-wrap** (explicit `\n` is honored).
-5. `canvas.unit` is `mm` only; `schema_version` is `"0.1"` only.
-
-## MCP server
+## MCP server (for coding agents)
 
 ```bash
-uv run papercanvas-mcp --root path/to/project
+papercanvas-mcp --root path/to/project
 ```
 
-Seven stdio tools (`papercanvas_create/get/patch/layout/render/lint/inspect`)
-over the same service layer as the CLI. All paths must resolve inside
-`--root`; outputs are written next to the IR inside the root. Domain errors
-return `{"ok": false, "error": ...}` so agents can self-correct.
+Seven tools: `papercanvas_create`, `papercanvas_get`, `papercanvas_patch`,
+`papercanvas_layout`, `papercanvas_render`, `papercanvas_lint`,
+`papercanvas_inspect`. All paths must stay inside `--root`; failures return
+structured `{"ok": false, "error": ...}` so agents can self-correct. See
+[docs/mcp.md](docs/mcp.md).
 
-The Agent Skill in [`skills/papercanvas/SKILL.md`](skills/papercanvas/SKILL.md)
-teaches coding agents the full workflow; a recorded real-agent acceptance run
-lives in [`docs/m3-e2e-log.md`](docs/m3-e2e-log.md).
+### Codex / Claude Code / OpenCode
+
+PaperCanvas speaks standard MCP stdio, so any MCP client works. Point the
+client at `papercanvas-mcp` with the project directory as `--root`:
+
+- **Claude Code**: `claude mcp add papercanvas -- papercanvas-mcp --root .`
+  (or add the JSON below to `.mcp.json` in the project)
+- **Codex CLI**: add to `~/.codex/config.toml`:
+  `[mcp_servers.papercanvas]` with `command = "papercanvas-mcp"`,
+  `args = ["--root", "."]`
+- **OpenCode**: add to `opencode.json`:
+  `"mcp": {"papercanvas": {"type": "local", "command": ["papercanvas-mcp", "--root", "."]}}`
+
+Generic stdio JSON (most clients accept this shape):
+
+```jsonc
+{
+  "mcpServers": {
+    "papercanvas": {
+      "command": "papercanvas-mcp",
+      "args": ["--root", "."]
+    }
+  }
+}
+```
+
+The Agent Skill at
+[`skills/papercanvas/SKILL.md`](skills/papercanvas/SKILL.md) (bundled inside
+the wheel at `papercanvas/skills/SKILL.md`) teaches agents the full
+workflow. Verification scope: all tool behavior is covered by real-protocol
+tests ([tests/test_mcp_e2e.py](tests/test_mcp_e2e.py),
+[tests/test_mcp_stdio.py](tests/test_mcp_stdio.py)); the third-party client
+UIs themselves were not exercised in this project's environment.
 
 ## The Figure IR in one minute
 
@@ -146,9 +175,46 @@ uv run papercanvas validate quickstart.json   # -> valid
 uv run papercanvas render quickstart.json     # -> quickstart.svg
 ```
 
-Agents never write XML or PPTX internals; they apply patches such as
-`{"op": "set_style", "target": "forget_branch", "style": {"fill": "#FCE4CF"}}`.
+## Capabilities & limitations
+
+Figure IR v0.1 supports boxes (`rect` / `rounded_rect`), port-annotated
+edges with orthogonal routing, groups, palette-driven styling, auto-sizing,
+layered/linear layouts, and FC001–FC008 lint. CJK labels are measured and
+rendered with a system CJK font when one exists (FC007 reports the
+substitution). The full IR reference is in
+[docs/figure-ir.md](docs/figure-ir.md).
+
+## Naming (final decision)
+
+| Surface | Name |
+|---|---|
+| GitHub repository | `HarryHeYu/figcraft` ("FigCraft" is the historical codename) |
+| PyPI package | `pip install papercanvas` (verified available) |
+| CLI | `papercanvas` |
+| MCP server & tool prefix | `papercanvas-mcp`, `papercanvas_*` |
+| Python import | `papercanvas` |
+
+## Documentation
+
+- [Figure IR reference](docs/figure-ir.md)
+- [MCP server](docs/mcp.md)
+- [Architecture](docs/architecture.md)
+- [Versioning & compatibility](docs/versioning.md)
+- [Release checklist](docs/release-checklist.md)
+- [Changelog](CHANGELOG.md) · milestone history in
+  [PROJECT-PLAN.md](PROJECT-PLAN.md)
+
+## Contributing
+
+Issues and PRs welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md). Security reports: [SECURITY.md](SECURITY.md).
+
+## Roadmap
+
+- v0.2: obstacle-aware routing everywhere, broader CJK font fallback,
+  two-column paper presets, visual regression baselines
+- later: additional figure types, web canvas exploration
 
 ## License
 
-MIT
+[MIT](LICENSE)
