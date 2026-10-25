@@ -1,4 +1,8 @@
-# v0.1.0 Release Gate 检查清单
+# v0.1.0 (Alpha) Release Gate 检查清单
+
+> 定位：v0.1.0 是 **Alpha** 发布——核心引擎、CLI 与 MCP 接口已稳定并经
+> 三平台 CI 与真实 Agent 端到端验证；格式演进、路由质量与字体覆盖仍有
+> 已知边界（见文末与 docs/roadmap-v0.2.md）。
 
 对应 PROJECT-PLAN 草案 §八 的 8 项验收。自动化项由
 `tests/test_release_gate.py` 持续验证；本文件记录证据位置。

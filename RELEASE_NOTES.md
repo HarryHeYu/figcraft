@@ -1,4 +1,4 @@
-# PaperCanvas v0.1.0 — Release Notes（发布候选 RC1）
+# PaperCanvas v0.1.0 — Release Notes（Alpha，发布冻结）
 
 **Agent-Native Scientific Figure Studio** — Figures as Code, Agents as Artists.
 
@@ -59,5 +59,6 @@ papercanvas-mcp --root path/to/project
 
 ## 升级与兼容
 
-首个公开版本，无兼容性负担。`schema_version` 机制已就位，后续格式变更
-将带迁移路径。
+首个公开版本（**Alpha 质量**：引擎与接口稳定，格式与布局质量仍有已知
+边界），无兼容性负担。`schema_version` 机制已就位，后续格式变更将带迁移
+路径。v0.2 规划见 `docs/roadmap-v0.2.md`。

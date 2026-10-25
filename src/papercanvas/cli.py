@@ -221,6 +221,8 @@ def render(
         console.print(
             f"[green]rendered[/green] {file_info['path']} ({file_info['bytes']} bytes)"
         )
+    for warning in result.get("warnings", ()):
+        console.print(f"[yellow]warning:[/yellow] {warning}")
 
 
 @app.command()
@@ -249,6 +251,8 @@ def build(
         f"[green]built[/green] {rendered} — preset {preset.value}, revision "
         f"{result['revision']}"
     )
+    for warning in result.get("warnings", ()):
+        console.print(f"[yellow]warning:[/yellow] {warning}")
 
 
 @app.command()

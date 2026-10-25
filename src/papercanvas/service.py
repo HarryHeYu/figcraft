@@ -52,13 +52,43 @@ class ServiceContext:
         return resolved
 
 
+def figure_label_text(fig: Figure) -> str:
+    """Every label in the figure, newline-joined (font-resolution input)."""
+    labels = [node.label for node in fig.nodes if node.label]
+    labels += [group.label for group in fig.groups if group.label]
+    return "\n".join(labels)
+
+
 def text_layout_for(fig: Figure) -> TextLayout:
     """One TextLayout for the whole figure, resolved against ALL label text
     so the chosen font covers every glyph (CJK labels included) and all
     three renderers measure with the exact same font."""
-    labels = [node.label for node in fig.nodes if node.label]
-    labels += [group.label for group in fig.groups if group.label]
-    return TextLayout(FontMetrics.for_text(fig.theme.font_family, '\n'.join(labels)))
+    return TextLayout(FontMetrics.for_text(fig.theme.font_family, figure_label_text(fig)))
+
+
+def coverage_warnings(fig: Figure, layout: TextLayout) -> list[str]:
+    """Explicit warnings for glyphs the chosen font cannot cover.
+
+    Without this, a PDF with uncovered glyphs (emoji on a CJK-only machine,
+    CJK on a Latin-only install) would silently contain .notdef boxes.
+    """
+    from papercanvas.text.text_metrics import file_covers
+
+    metrics = layout.metrics
+    text = figure_label_text(fig)
+    if not text or file_covers(str(metrics.path), text):
+        return []
+    uncovered = sorted(
+        {ch for ch in text if not ch.isspace() and not file_covers(str(metrics.path), ch)}
+    )
+    sample = ", ".join(f"U+{ord(ch):04X} {ch!r}" for ch in uncovered[:6])
+    more = f" (+{len(uncovered) - 6} more)" if len(uncovered) > 6 else ""
+    return [
+        f"{len(uncovered)} character(s) cannot be rendered by font "
+        f"{metrics.resolved_family!r}: {sample}{more}. Those glyphs appear "
+        f"as boxes in PDF; SVG/PPTX depend on viewer-side fallback. Install "
+        f"a font covering them or shorten the labels."
+    ]
 
 
 def ensure_not_ir(target: Path, ir_path: Path) -> None:
@@ -178,7 +208,11 @@ def render_figure(
         )
         atomic_write(target, payload)
         files.append({"path": str(target), "format": fmt, "bytes": len(payload)})
-    return {"ok": True, "files": files, "revision": doc.figure.revision}
+    result = {"ok": True, "files": files, "revision": doc.figure.revision}
+    glyph_warnings = coverage_warnings(doc.figure, layout)
+    if glyph_warnings:
+        result["warnings"] = glyph_warnings
+    return result
 
 
 def lint_figure_file(

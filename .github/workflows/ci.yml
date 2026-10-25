@@ -31,9 +31,13 @@ jobs:
         run: uv run pytest -v
 
   smoke:
-    # Wheel-build + install + real-CLI/stdio acceptance on a clean machine
+    # Wheel-build + install + real-CLI/stdio acceptance on clean machines
     needs: test
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,13 +53,22 @@ jobs:
       - name: Install wheel into a fresh venv
         run: |
           uv venv .smoke-venv
-          uv pip install --python .smoke-venv/bin/python dist/*.whl
+          uv pip install --python .smoke-venv/bin/python dist/*.whl || \
+            uv pip install --python .smoke-venv/Scripts/python.exe dist/*.whl
 
-      - name: CLI smoke (installed wheel, foreign directory)
+      - name: CLI + MCP stdio smoke (installed wheel, foreign directory)
+        shell: bash
         run: |
-          mkdir -p /tmp/smoke-project
-          cd /tmp/smoke-project
-          PC="$GITHUB_WORKSPACE/.smoke-venv/bin/papercanvas"
+          if [ -x .smoke-venv/bin/papercanvas ]; then
+            PC=".smoke-venv/bin/papercanvas"
+            MCP=".smoke-venv/bin/papercanvas-mcp"
+          else
+            PC=".smoke-venv/Scripts/papercanvas.exe"
+            MCP=".smoke-venv/Scripts/papercanvas-mcp.exe"
+          fi
+          SMOKE_ROOT="$PWD/.smoke-project"
+          mkdir -p "$SMOKE_ROOT"
+          cd "$SMOKE_ROOT"
           "$PC" init fig.json --id smoke_ci
           printf '{"operations":[{"op":"add_node","node":{"id":"a","label":"A"}},{"op":"add_node","node":{"id":"b","label":"B"}},{"op":"add_edge","edge":{"id":"e1","source":"a","target":"b"}}]}' > ops.json
           "$PC" patch fig.json --ops ops.json
@@ -63,10 +76,7 @@ jobs:
           "$PC" lint fig.json
           "$PC" render fig.json --format all
           test -s fig.svg && test -s fig.pdf && test -s fig.pptx
-
-      - name: MCP stdio smoke (installed papercanvas-mcp)
-        run: |
           uv run --project "$GITHUB_WORKSPACE" python \
             "$GITHUB_WORKSPACE/docs/rc/stdio_smoke.py" \
-            --root /tmp/smoke-project \
-            --executable "$GITHUB_WORKSPACE/.smoke-venv/bin/papercanvas-mcp"
+            --root "$SMOKE_ROOT" \
+            --executable "$GITHUB_WORKSPACE/$MCP"

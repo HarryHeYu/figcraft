@@ -53,12 +53,35 @@ pip install papercanvas        # PyPI publication pending final approval
 uv sync
 
 papercanvas init figures.json --id demo
-papercanvas patch figures.json --ops ops.json   # add nodes & edges
+
+# 2. describe the figure as a patch (save as ops.json)
+cat > ops.json <<'JSON'
+{
+  "operations": [
+    {"op": "add_node", "node": {"id": "input",  "type": "rounded_rect", "label": "Input Video"}},
+    {"op": "add_node", "node": {"id": "encoder", "type": "rounded_rect", "label": "Video Encoder"}},
+    {"op": "add_node", "node": {"id": "output",  "type": "rounded_rect", "label": "Prediction"}},
+    {"op": "add_edge", "edge": {"id": "e1", "source": "input",  "target": "encoder"}},
+    {"op": "add_edge", "edge": {"id": "e2", "source": "encoder", "target": "output"}}
+  ]
+}
+JSON
+
+papercanvas patch figures.json --ops ops.json
 papercanvas layout figures.json --preset layered
 papercanvas lint figures.json
 papercanvas render figures.json --format all
 # -> figures.svg figures.pdf figures.pptx
-```
+
+# 3. revise in place — rename ONE node and re-render, no rebuild:
+echo '{"operations": [{"op": "update_label", "target": "output", "label": "Final Prediction"}]}' > round2.json
+papercanvas patch figures.json --ops round2.json
+papercanvas render figures.json --format all
+````
+
+Windows PowerShell: replace the `cat > ops.json <<'JSON' ... JSON` block with
+`@' ... '@ | Set-Content ops.json` (same JSON), and the last patch with
+`echo '...' | ...` via a file — process substitution `<(...)` is bash-only.
 
 Try it without writing anything:
 

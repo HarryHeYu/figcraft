@@ -3,7 +3,27 @@
 All notable changes to PaperCanvas are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/); versioning: SemVer.
 
-## [0.1.0] — 2026-10-25 (release candidate built & verified; PyPI publication pending approval)
+## [0.1.0] — 2026-10-25 (ALPHA — release-frozen; PyPI publication pending approval)
+
+v0.1.0 is an **Alpha** release: the engine, CLI and MCP surface are stable
+and tested, but the format, layout quality and font coverage still have
+known edges (see Known limitations and docs/release-checklist.md).
+
+### Changed — release-freeze round (2026-10-25)
+
+- **Uncoverable glyphs now warn explicitly on render**: `papercanvas render`
+  / `build` print (and MCP `papercanvas_render` returns) a warning naming
+  the uncovered characters (U+ codes) whenever the chosen font cannot render
+  every label glyph — a PDF full of .notdef boxes is never silent anymore.
+- **Font selection upgraded to maximum-coverage**: a single uncovered emoji
+  no longer disqualifies a CJK font that covers the rest of the text.
+- **README Quickstart verified verbatim**: every command is copy-paste
+  runnable (inline ops.json, portable round-2 edit; a Windows process-
+  substitution trap was found by the verbatim run and removed).
+- **CI smoke matrix extended to Windows**: wheel install, CLI flow and real
+  MCP stdio smoke now run on ubuntu-latest AND windows-latest.
+- docs/release-checklist.md, RELEASE_NOTES.md positioned as **Alpha** with
+  the frozen limitation list; docs/roadmap-v0.2.md added (planning only).
 
 ### Changed — open-source hardening round (2026-10-25)
 

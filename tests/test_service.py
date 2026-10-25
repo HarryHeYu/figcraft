@@ -91,3 +91,50 @@ def test_text_layout_for_uses_one_font_for_the_whole_figure(figure_dict: dict) -
     fig = __import__("papercanvas").core.models.Figure.model_validate(figure_dict)
     layout = text_layout_for(fig)
     assert layout.metrics.resolved_family  # one font resolved for all labels
+
+
+def test_render_reports_uncovered_glyphs(mcp, tmp_path: Path) -> None:
+    """Uncoverable glyphs must surface as explicit render warnings — never a
+    silent PDF full of .notdef boxes (release-freeze requirement)."""
+    from papercanvas.core.document import FigureDocument
+    from papercanvas.service import (
+        ServiceContext,
+        coverage_warnings,
+        create_figure,
+        patch_figure,
+        render_figure,
+        text_layout_for,
+    )
+    from papercanvas.text.text_metrics import file_covers
+
+    ctx = ServiceContext(root=tmp_path)
+    create_figure(ctx, "glyphs.json", "glyphs")
+    patch_figure(
+        ctx,
+        "glyphs.json",
+        [
+            {
+                "op": "add_node",
+                "node": {
+                    "id": "a",
+                    "type": "rect",
+                    "label": "视频和🎥表情",
+                    "x": 5,
+                    "y": 5,
+                    "w": 34,
+                    "h": 12,
+                },
+            }
+        ],
+    )
+    doc = FigureDocument.load(tmp_path / "glyphs.json")
+    layout = text_layout_for(doc.figure)
+    warnings = coverage_warnings(doc.figure, layout)
+    if file_covers(str(layout.metrics.path), "视频和🎥表情"):
+        pytest.skip("this machine's font covers the sample glyphs")
+
+    assert warnings, "uncovered glyphs must produce a warning"
+    assert "cannot be rendered" in warnings[0]
+
+    rendered = render_figure(ctx, "glyphs.json", ["pdf"])
+    assert rendered["warnings"] == warnings  # same warning surfaces on render

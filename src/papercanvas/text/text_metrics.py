@@ -146,15 +146,30 @@ def resolve_font_for_text(family: str, text: str) -> tuple[Path, bool, str | Non
 
     Returns ``(path, substituted, reason)``. When the requested font misses
     glyphs (CJK on a Latin-only install, for instance) the CJK candidate
-    table is searched; ``reason`` explains the substitution for FC007.
+    table is searched for maximum coverage; ``reason`` explains the
+    substitution for FC007.
     """
     path, substituted = resolve_font(family)
-    if not text or file_covers(str(path), text):
+    uncovered = {
+        ch for ch in text if not ch.isspace() and not file_covers(str(path), ch)
+    }
+    if not uncovered:
         return path, substituted, ("is not installed" if substituted else None)
 
+    # partial coverage beats zero coverage: pick the candidate covering the
+    # most of the still-uncovered set (e.g. a CJK font for 视频 even when an
+    # emoji remains uncovered elsewhere)
+    best_path = None
+    best_count = 0
     for candidate in _CJK_CANDIDATES:
-        if candidate.exists() and file_covers(str(candidate), text):
-            return candidate, True, "does not cover all glyphs in this figure"
+        if not candidate.exists():
+            continue
+        count = sum(1 for ch in uncovered if file_covers(str(candidate), ch))
+        if count > best_count:
+            best_path, best_count = candidate, count
+
+    if best_path is not None and best_count > 0:
+        return best_path, True, "does not cover all glyphs in this figure"
 
     # nothing better exists on this machine: keep the primary font and let
     # FC007 warn about the uncovered glyphs
