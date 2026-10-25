@@ -163,6 +163,35 @@ fixes closed:
   within ~4×10⁻⁵ mm (independently verified; the acceptance bar is
   0.2 mm). Determinism holds for all three formats across processes.
 
+### Added — M4 (release readiness)
+
+- **Third example** `examples/multi_branch.json`: dual-branch model
+  architecture (8 nodes, 8 edges, palette-driven colors, "Dual Branch"
+  group) — created through the real CLI workflow, layered layout, lint
+  clean (0 errors / 0 warnings), exported to SVG/PDF/PPTX.
+- **MCP protocol end-to-end test** (`tests/test_mcp_e2e.py`): the whole
+  agent flow over the real MCP protocol — create, structure patch, layout,
+  three rounds of local edits with per-round untouched-object invariance
+  checks, a lint-driven FC003 fix, three-format export, inspect detail.
+  Shared protocol fixtures moved to `tests/conftest.py`.
+- **Release Gate automation** (`tests/test_release_gate.py`): the eight
+  acceptance items run on every push — IR validation, three-format export
+  per example, vector/editable output checks, lint-clean examples,
+  recolor-isolation, failed-patch immutability, agent flow without manual
+  JSON editing, CI matrix coverage. Evidence table in
+  `docs/release-checklist.md`.
+- **Documentation**: `docs/figure-ir.md` (IR v0.1 field reference),
+  `docs/mcp.md` (server setup, security posture, tool table),
+  `docs/release-checklist.md`.
+- **Font substitution fix** (upstream CI finding): `resolve_font` now
+  verifies the embedded family name of candidate files and confines
+  cross-family files to the fallback chain, so `substituted` and
+  `FontMetrics.is_consistent` agree on every platform (Ubuntu CI caught
+  Arial silently resolving to DejaVu Sans with `substituted=False`);
+  FC007 tests cover real substitutions naming both families; lint-clean
+  test fixtures request the locally faithful family instead of hardcoding
+  a vendor font.
+
 ### Added — M2 (publication-grade exports + lint)
 
 ### Fixed — M2 verification round

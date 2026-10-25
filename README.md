@@ -33,8 +33,8 @@ v0.1.0 development — milestone plan in [PROJECT-PLAN.md](PROJECT-PLAN.md).
 - [x] M0 — project skeleton, Figure IR schema + hard validation, transactional patch engine, CLI `init`/`validate`
 - [x] M1 — TextLayout, linear/layered layout, orthogonal routing, SVG renderer, CLI `layout`/`render`/`patch`/`build`
 - [x] M2 — PDF (reportlab), PPTX (python-pptx native shapes), Lint FC001–FC008, cross-format consistency ≤0.2 mm
-- [x] M3 — shared service layer, MCP server (`papercanvas-mcp`, 7 tools), Agent Skill, real-agent end-to-end acceptance (222 tests green)
-- [ ] M4 — examples, real-agent end-to-end suite, release v0.1.0
+- [x] M3 — shared service layer, MCP server (`papercanvas-mcp`, 7 tools), Agent Skill, real-agent end-to-end acceptance
+- [x] M4 — three examples, MCP protocol e2e, Release Gate automation, docs, v0.1.0-ready (239 tests green)
 
 ## Install (development)
 

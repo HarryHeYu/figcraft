@@ -1,0 +1,258 @@
+{
+  "schema_version": "0.1",
+  "id": "multi_branch_architecture",
+  "revision": 3,
+  "canvas": {
+    "width": 268.33514404296875,
+    "height": 36.0,
+    "unit": "mm",
+    "margin": 5.0
+  },
+  "theme": {
+    "font_family": "Arial",
+    "font_size_pt": 8.0,
+    "palette": {
+      "input_fill": "#E8F0FE",
+      "backbone_fill": "#E5F4EC",
+      "branch_fill": "#FCE4CF",
+      "head_fill": "#FCE8D8"
+    },
+    "background": "#FFFFFF"
+  },
+  "nodes": [
+    {
+      "id": "image_input",
+      "type": "rounded_rect",
+      "label": "Image Input",
+      "x": 5.0,
+      "y": 13.0,
+      "w": 20.0,
+      "h": 10.0,
+      "style": {
+        "fill": "input_fill",
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "vision_encoder",
+      "type": "rounded_rect",
+      "label": "ViT Encoder",
+      "x": 41.0,
+      "y": 13.0,
+      "w": 20.542720540364584,
+      "h": 10.0,
+      "style": {
+        "fill": null,
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "adapter",
+      "type": "rounded_rect",
+      "label": "Q-Former Adapter",
+      "x": 77.54272054036458,
+      "y": 13.0,
+      "w": 27.91711968315972,
+      "h": 10.0,
+      "style": {
+        "fill": null,
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "backbone",
+      "type": "rounded_rect",
+      "label": "LLM Backbone",
+      "x": 121.45984022352431,
+      "y": 13.0,
+      "w": 23.84053819444444,
+      "h": 10.0,
+      "style": {
+        "fill": "backbone_fill",
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "perception_head",
+      "type": "rect",
+      "label": "Perception Head",
+      "x": 161.30037841796874,
+      "y": 5.0,
+      "w": 26.039887152777776,
+      "h": 10.0,
+      "style": {
+        "fill": "branch_fill",
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "reasoning_head",
+      "type": "rect",
+      "label": "Reasoning Head",
+      "x": 161.30037841796874,
+      "y": 21.0,
+      "w": 26.039887152777776,
+      "h": 10.0,
+      "style": {
+        "fill": "branch_fill",
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "fusion",
+      "type": "rounded_rect",
+      "label": "Feature Fusion",
+      "x": 203.3402655707465,
+      "y": 13.0,
+      "w": 23.99487847222222,
+      "h": 10.0,
+      "style": {
+        "fill": null,
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    },
+    {
+      "id": "classifier",
+      "type": "rounded_rect",
+      "label": "Task Head",
+      "x": 243.33514404296872,
+      "y": 13.0,
+      "w": 20.0,
+      "h": 10.0,
+      "style": {
+        "fill": "head_fill",
+        "stroke": null,
+        "stroke_width": null,
+        "stroke_dash": null
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_in_enc",
+      "source": "image_input",
+      "target": "vision_encoder",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_enc_adapt",
+      "source": "vision_encoder",
+      "target": "adapter",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_adapt_bb",
+      "source": "adapter",
+      "target": "backbone",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_bb_percep",
+      "source": "backbone",
+      "target": "perception_head",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_bb_reason",
+      "source": "backbone",
+      "target": "reasoning_head",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_percep_fuse",
+      "source": "perception_head",
+      "target": "fusion",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_reason_fuse",
+      "source": "reasoning_head",
+      "target": "fusion",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    },
+    {
+      "id": "e_fuse_cls",
+      "source": "fusion",
+      "target": "classifier",
+      "source_port": "right",
+      "target_port": "left",
+      "style": {
+        "stroke": null,
+        "stroke_width": null,
+        "arrow": "end"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "dual_branch",
+      "children": [
+        "perception_head",
+        "reasoning_head"
+      ],
+      "label": "Dual Branch",
+      "style": {
+        "fill": null,
+        "stroke": "#999999",
+        "stroke_width": null,
+        "stroke_dash": "dashed"
+      }
+    }
+  ]
+}

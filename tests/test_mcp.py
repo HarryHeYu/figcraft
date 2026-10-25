@@ -9,52 +9,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-from contextlib import asynccontextmanager
 from pathlib import Path
 
-import pytest
-from mcp.client._memory import InMemoryTransport
-from mcp.client.session import ClientSession
 
-from papercanvas.integrations.mcp_server import build_server
-
-
-@asynccontextmanager
-async def _connected(root: Path):
-    """One in-memory protocol session against a freshly built server."""
-    async with InMemoryTransport(build_server(root), raise_exceptions=True) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            yield session
-
-
-def call_tool(root: Path, tool: str, arguments: dict) -> dict:
-    """Run one tool call over the real MCP protocol (synchronously)."""
-
-    async def run() -> dict:
-        async with _connected(root) as session:
-            result = await session.call_tool(tool, arguments)
-        if result.is_error:
-            raise AssertionError(f"tool {tool} returned protocol error: {result.content}")
-        if result.structured_content is not None:
-            return result.structured_content
-        return json.loads(result.content[0].text)
-
-    return asyncio.run(run())
-
-
-@pytest.fixture
-def mcp(tmp_path: Path):
-    class _Session:
-        def call(self, tool: str, arguments: dict) -> dict:
-            return call_tool(tmp_path, tool, arguments)
-
-    return _Session()
-
-
-def test_list_tools_exposes_the_seven_tools(tmp_path: Path) -> None:
+def test_list_tools_exposes_the_seven_tools(tmp_path: Path, connected_mcp) -> None:
     async def run() -> set[str]:
-        async with _connected(tmp_path) as session:
+        async with connected_mcp(tmp_path) as session:
             listing = await session.list_tools()
         return {tool.name for tool in listing.tools}
 

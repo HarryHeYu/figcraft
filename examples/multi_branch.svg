@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="268.3351mm" height="36mm" viewBox="0 0 268.3351 36">
+  <defs>
+    <marker id="pc-arrow-0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#444444"/>
+    </marker>
+  </defs>
+  <rect id="background" x="0" y="0" width="268.3351" height="36" fill="#FFFFFF"/>
+  <rect id="group:dual_branch" x="158.3004" y="2" width="32.0399" height="32" fill="none" stroke="#999999" stroke-width="0.35" stroke-dasharray="3 1.5"/>
+  <text x="166.5482" y="3.0576" font-family="Arial" font-size="2.8222" fill="#000000">Dual Branch</text>
+  <polyline id="edge:e_in_enc" points="25,18 41,18" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_enc_adapt" points="61.5427,18 77.5427,18" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_adapt_bb" points="105.4598,18 121.4598,18" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_bb_percep" points="145.3004,18 153.3004,18 153.3004,10 161.3004,10" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_bb_reason" points="145.3004,18 153.3004,18 153.3004,26 161.3004,26" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_percep_fuse" points="187.3403,10 195.3403,10 195.3403,18 203.3403,18" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_reason_fuse" points="187.3403,26 195.3403,26 195.3403,18 203.3403,18" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <polyline id="edge:e_fuse_cls" points="227.3351,18 243.3351,18" fill="none" stroke="#444444" stroke-width="0.35" marker-end="url(#pc-arrow-0)"/>
+  <rect id="node:image_input" x="5" y="13" width="20" height="10" fill="#E8F0FE" stroke="#444444" stroke-width="0.35" rx="2.5"/>
+  <text x="7.5448" y="18.9784" font-family="Arial" font-size="2.8222" fill="#000000">Image Input</text>
+  <rect id="node:vision_encoder" x="41" y="13" width="20.5427" height="10" fill="#FFFFFF" stroke="#444444" stroke-width="0.35" rx="2.5"/>
+  <text x="43.5" y="18.9784" font-family="Arial" font-size="2.8222" fill="#000000">ViT Encoder</text>
+  <rect id="node:adapter" x="77.5427" y="13" width="27.9171" height="10" fill="#FFFFFF" stroke="#444444" stroke-width="0.35" rx="2.5"/>
+  <text x="80.0427" y="18.9784" font-family="Arial" font-size="2.8222" fill="#000000">Q-Former Adapter</text>
+  <rect id="node:backbone" x="121.4598" y="13" width="23.8405" height="10" fill="#E5F4EC" stroke="#444444" stroke-width="0.35" rx="2.5"/>
+  <text x="123.9598" y="18.9784" font-family="Arial" font-size="2.8222" fill="#000000">LLM Backbone</text>
+  <rect id="node:perception_head" x="161.3004" y="5" width="26.0399" height="10" fill="#FCE4CF" stroke="#444444" stroke-width="0.35"/>
+  <text x="163.8004" y="10.9784" font-family="Arial" font-size="2.8222" fill="#000000">Perception Head</text>
+  <rect id="node:reasoning_head" x="161.3004" y="21" width="26.0399" height="10" fill="#FCE4CF" stroke="#444444" stroke-width="0.35"/>
+  <text x="163.8004" y="26.9784" font-family="Arial" font-size="2.8222" fill="#000000">Reasoning Head</text>
+  <rect id="node:fusion" x="203.3403" y="13" width="23.9949" height="10" fill="#FFFFFF" stroke="#444444" stroke-width="0.35" rx="2.5"/>
+  <text x="205.8403" y="18.9784" font-family="Arial" font-size="2.8222" fill="#000000">Feature Fusion</text>
+  <rect id="node:classifier" x="243.3351" y="13" width="20" height="10" fill="#FCE8D8" stroke="#444444" stroke-width="0.35" rx="2.5"/>
+  <text x="246.5108" y="18.9784" font-family="Arial" font-size="2.8222" fill="#000000">Task Head</text>
+</svg>
