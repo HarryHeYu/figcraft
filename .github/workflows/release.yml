@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build-and-publish:
+    # PyPI Trusted Publishing (OIDC) — no API tokens, no secrets.
+    # Requires the Trusted Publisher mapping on pypi.org:
+    #   project papercanvas / owner HarryHeYu / repo figcraft
+    #   workflow release.yml / environment pypi
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Check distributions
+        run: uvx twine check dist/*
+
+      - name: Smoke-test the wheel in a fresh venv
+        run: |
+          uv venv .rc-venv
+          uv pip install --python .rc-venv/bin/python dist/*.whl
+          .rc-venv/bin/papercanvas --version
+          .rc-venv/bin/papercanvas-mcp --help
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

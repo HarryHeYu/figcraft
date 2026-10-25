@@ -176,7 +176,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     server = build_server(Path(args.root))
-    server.run_stdio_async()
+    server.run("stdio")  # synchronous entry point of the v2 MCPServer
 
 
 if __name__ == "__main__":

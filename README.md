@@ -36,7 +36,13 @@ v0.1.0 development — milestone plan in [PROJECT-PLAN.md](PROJECT-PLAN.md).
 - [x] M3 — shared service layer, MCP server (`papercanvas-mcp`, 7 tools), Agent Skill, real-agent end-to-end acceptance
 - [x] M4 — three examples, MCP protocol e2e, Release Gate automation, docs, v0.1.0-ready (239 tests green)
 
-## Install (development)
+## Install
+
+```bash
+pip install papercanvas        # PyPI publication pending final approval
+```
+
+For development:
 
 ```bash
 uv sync
@@ -52,6 +58,32 @@ uv run papercanvas build examples/basic_pipeline.json --format all
 uv run papercanvas lint examples/basic_pipeline.json
 uv run papercanvas inspect examples/basic_pipeline.json
 ```
+
+## Known limitations (v0.1)
+
+1. **PDF CJK/emoji glyphs**: when the resolved font has no CJK coverage
+   (e.g. Arial), PDF output renders those glyphs as .notdef boxes; SVG and
+   PPTX are unaffected (viewer-side font fallback). CJK font fallback and an
+   FC007 glyph-coverage extension are planned.
+2. **No PPTX→IR sync**: the PPTX is a product — edit it freely in
+   PowerPoint, but changes do not flow back into the Figure IR.
+3. **No obstacle avoidance in routing**: an edge may cross unrelated nodes;
+   lint rule FC006 reports it after the fact.
+4. **Group labels do not auto-wrap** (explicit `\n` is honored).
+5. `canvas.unit` is `mm` only; `schema_version` is `"0.1"` only.
+
+## Known limitations (v0.1)
+
+1. **PDF CJK/emoji glyphs**: when the resolved font has no CJK coverage
+   (e.g. Arial), PDF output renders those glyphs as .notdef boxes; SVG and
+   PPTX are unaffected (viewer-side font fallback). CJK font fallback and an
+   FC007 glyph-coverage extension are planned.
+2. **No PPTX→IR sync**: the PPTX is a product — edit it freely in
+   PowerPoint, but changes do not flow back into the Figure IR.
+3. **No obstacle avoidance in routing**: an edge may cross unrelated nodes;
+   lint rule FC006 reports it after the fact.
+4. **Group labels do not auto-wrap** (explicit `\n` is honored).
+5. `canvas.unit` is `mm` only; `schema_version` is `"0.1"` only.
 
 ## MCP server
 

@@ -3,7 +3,11 @@
 All notable changes to PaperCanvas are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/); versioning: SemVer.
 
-## [Unreleased]
+## [0.1.0] — 2026-10-25 (release candidate built & verified; PyPI publication pending approval)
+
+Everything below shipped in v0.1.0. See [RELEASE_NOTES.md](RELEASE_NOTES.md)
+for the user-facing summary and `docs/release-checklist.md` for the
+acceptance evidence.
 
 ### Added — M0 (project skeleton & Figure IR)
 

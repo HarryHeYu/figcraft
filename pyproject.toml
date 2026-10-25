@@ -46,6 +46,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/papercanvas"]
 
+[tool.hatch.build.targets.wheel.force-include]
+# the Agent Skill ships with the package so MCP/CLI users get the workflow
+"skills/papercanvas/SKILL.md" = "papercanvas/skills/SKILL.md"
+
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]

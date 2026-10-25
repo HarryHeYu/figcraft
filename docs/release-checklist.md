@@ -23,7 +23,7 @@
 - [x] MCP Server（`docs/mcp.md`，7 工具）
 - [x] Agent Skill（`skills/papercanvas/SKILL.md`）
 - [x] 三个科研图示例（`examples/`，三格式产物齐备）
-- [x] 自动化测试（`uv run pytest`，225 项）
+- [x] 自动化测试（`uv run pytest`，241 项；最新日志 `docs/m4-test-log.txt`）
 - [x] README 与文档
 - [ ] PyPI 发布（`papercanvas`，执行 `uv build && uv publish` 时进行）
 
