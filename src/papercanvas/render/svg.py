@@ -182,7 +182,14 @@ def render_svg(fig: Figure, text_layout: TextLayout) -> bytes:
                 f"edge {edge.id!r} references missing node(s) "
                 f"{[n for n in (edge.source, edge.target) if fig.node(n) is None]}"
             )
-        points = route_orthogonal(source, edge.source_port, target, edge.target_port)
+        obstacles = [
+            node
+            for node in fig.nodes
+            if node.is_placed and node.id not in (edge.source, edge.target)
+        ]
+        points = route_orthogonal(
+            source, edge.source_port, target, edge.target_port, obstacles
+        )
         stroke = color_of_style(edge.style.stroke, DEFAULT_STROKE)
         attrs = {
             "id": f"edge:{edge.id}",

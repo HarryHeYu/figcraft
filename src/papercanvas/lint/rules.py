@@ -148,7 +148,14 @@ def fc006_arrow_through_node(fig: Figure) -> list[Finding]:
             continue
         if not source.is_placed or not target.is_placed:
             continue
-        points = route_orthogonal(source, edge.source_port, target, edge.target_port)
+        obstacles = [
+            node
+            for node in fig.nodes
+            if node.is_placed and node.id not in (edge.source, edge.target)
+        ]
+        points = route_orthogonal(
+            source, edge.source_port, target, edge.target_port, obstacles
+        )
         for node in fig.nodes:
             if node.id in (edge.source, edge.target) or not node.is_placed:
                 continue
@@ -197,11 +204,12 @@ def _path_hits(points, node: Node) -> bool:
 def fc007_font_resolution(fig: Figure, text_layout: TextLayout) -> list[Finding]:
     metrics = text_layout.metrics
     if metrics.substituted:
+        reason = metrics.substitution_reason or "is not installed"
         return [
             Finding(
                 "FC007",
                 WARNING,
-                f"font family {fig.theme.font_family!r} is not installed; "
+                f"font family {fig.theme.font_family!r} {reason}; "
                 f"substituted with {metrics.resolved_family!r} "
                 f"({metrics.path.name}) — line breaks were measured against "
                 f"the substitute",

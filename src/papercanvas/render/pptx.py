@@ -237,7 +237,14 @@ def render_pptx(fig: Figure, text_layout: TextLayout) -> bytes:
                 f"edge {edge.id!r} references missing node(s) "
                 f"{[n for n in (edge.source, edge.target) if fig.node(n) is None]}"
             )
-        points = route_orthogonal(source, edge.source_port, target, edge.target_port)
+        obstacles = [
+            node
+            for node in fig.nodes
+            if node.is_placed and node.id not in (edge.source, edge.target)
+        ]
+        points = route_orthogonal(
+            source, edge.source_port, target, edge.target_port, obstacles
+        )
         stroke = resolve_stroke(edge.style.stroke, theme)
         width_mm = stroke_width_mm(edge.style.stroke_width)
         for index, (start, end) in enumerate(zip(points, points[1:], strict=False)):
