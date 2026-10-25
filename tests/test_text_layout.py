@@ -157,3 +157,31 @@ def test_substituted_family_reports_actual_font() -> None:
     assert metrics.resolved_family.strip().lower() != "no such font 42"
     # the measurement facade keeps both names apart
     assert metrics.family == "No Such Font 42"
+
+
+# -- glyph-coverage-aware resolution (CJK) -----------------------------------
+
+
+def test_for_text_matches_for_family_for_ascii() -> None:
+    assert FontMetrics.for_text("Arial", "plain ascii") == FontMetrics.for_family("Arial")
+
+
+def test_cjk_labels_select_covering_font() -> None:
+    """When the requested font cannot cover CJK glyphs, resolution must pick
+    a font that does (or honestly keep the primary when nothing covers)."""
+    from papercanvas.text import text_metrics as tm
+
+    metrics = FontMetrics.for_text("Arial", "视频编码器")
+    if not any(p.exists() for p in tm._CJK_CANDIDATES):
+        pytest.skip("no CJK font available on this machine")
+    assert metrics.substituted
+    assert "does not cover" in (metrics.substitution_reason or "")
+    assert tm.file_covers(str(metrics.path), "视频编码器")
+
+
+def test_file_covers_ignores_whitespace() -> None:
+    from papercanvas.text import text_metrics as tm
+
+    path, _ = tm.resolve_font("Arial")
+    sample = "Video" + chr(10) + chr(9) + "Decoder"
+    assert tm.file_covers(str(path), sample)  # newline/tab are not glyphs

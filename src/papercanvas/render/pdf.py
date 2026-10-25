@@ -13,6 +13,7 @@ from __future__ import annotations
 import io
 import math
 import re
+from pathlib import Path
 
 from reportlab.lib.colors import HexColor
 from reportlab.pdfbase import pdfmetrics
@@ -52,11 +53,20 @@ def _hex6(value: str) -> HexColor:
 
 
 def _register_font(font_name: str, path) -> str:
+    from papercanvas.core.errors import RenderError
+    from papercanvas.text.text_metrics import file_is_true_type
+
+    if not file_is_true_type(str(path)):
+        raise RenderError(
+            f"the resolved font {Path(path).name!r} is CFF/PostScript-flavored "
+            f"and cannot be embedded into PDF; install a TrueType CJK font "
+            f"(SimHei / MS YaHei / WQY Zen Hei) or export SVG/PPTX instead"
+        )
     # key includes the resolved file: two different families can sanitize to
     # the same reportlab name but must embed their own font files
     key = (font_name, str(path))
     if key not in _REGISTERED_FONTS:
-        pdfmetrics.registerFont(TTFont(font_name, str(path)))
+        pdfmetrics.registerFont(TTFont(font_name, str(path), subfontIndex=0))
         _REGISTERED_FONTS[key] = font_name
     return font_name
 
@@ -183,7 +193,14 @@ def render_pdf(fig: Figure, text_layout: TextLayout) -> bytes:
                 f"edge {edge.id!r} references missing node(s) "
                 f"{[n for n in (edge.source, edge.target) if fig.node(n) is None]}"
             )
-        points = route_orthogonal(source, edge.source_port, target, edge.target_port)
+        obstacles = [
+            node
+            for node in fig.nodes
+            if node.is_placed and node.id not in (edge.source, edge.target)
+        ]
+        points = route_orthogonal(
+            source, edge.source_port, target, edge.target_port, obstacles
+        )
         stroke = resolve_stroke(edge.style.stroke, theme)
         stroke_pt = mm_to_pt(stroke_width_mm(edge.style.stroke_width))
         canvas.setStrokeColor(_hex6(stroke))

@@ -204,3 +204,21 @@ def _font_file(pdf_bytes: bytes) -> bytes | None:
         except zlib.error:
             return payload
     return None
+
+
+def test_pdf_cjk_labels_embed_a_covering_font(figure_dict: dict) -> None:
+    """CJK labels must be measured AND embedded with a covering font — the
+    .notdef-box problem from earlier milestones."""
+    from papercanvas.service import text_layout_for
+    from papercanvas.text.text_metrics import file_covers
+
+    figure_dict["nodes"][0]["label"] = "视频编码器"
+    fig = Figure.model_validate(figure_dict)
+    layout = text_layout_for(fig)
+    if not file_covers(str(layout.metrics.path), "视频编码器"):
+        pytest.skip("no CJK-capable font available on this machine")
+
+    pdf = render_pdf(fig, layout)
+    assert b"/FontFile2" in pdf
+    content = _content(pdf)
+    assert b"Tj" in content or b"TJ" in content

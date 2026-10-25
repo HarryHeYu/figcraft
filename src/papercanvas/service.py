@@ -53,7 +53,12 @@ class ServiceContext:
 
 
 def text_layout_for(fig: Figure) -> TextLayout:
-    return TextLayout(FontMetrics.for_family(fig.theme.font_family))
+    """One TextLayout for the whole figure, resolved against ALL label text
+    so the chosen font covers every glyph (CJK labels included) and all
+    three renderers measure with the exact same font."""
+    labels = [node.label for node in fig.nodes if node.label]
+    labels += [group.label for group in fig.groups if group.label]
+    return TextLayout(FontMetrics.for_text(fig.theme.font_family, '\n'.join(labels)))
 
 
 def ensure_not_ir(target: Path, ir_path: Path) -> None:

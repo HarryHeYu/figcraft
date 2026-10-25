@@ -56,6 +56,20 @@ _FALLBACKS: tuple[Path, ...] = (
     Path("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
 )
 
+# CJK-capable fonts, consulted only when the requested font cannot cover the
+# figure's glyphs. TrueType-flavored entries (.ttf/.ttc) can be embedded by
+# the PDF renderer; CFF-flavored (.otf) are measurement-only.
+_CJK_CANDIDATES: tuple[Path, ...] = (
+    Path("C:/Windows/Fonts/simhei.ttf"),
+    Path("C:/Windows/Fonts/msyh.ttc"),
+    Path("C:/Windows/Fonts/simsun.ttc"),
+    Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
+    Path("/System/Library/Fonts/STHeiti Light.ttc"),
+    Path("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"),
+    Path("/usr/share/fonts/truetype/wenquanyi/wqy-zenhei.ttc"),
+    Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
+)
+
 
 def _embedded_family_is(path: Path, requested_lower: str) -> bool:
     """True when the file's embedded family name matches the request.
@@ -91,6 +105,62 @@ def resolve_font(family: str) -> tuple[Path, bool]:
     )
 
 
+@lru_cache(maxsize=128)
+def file_covers(path_str: str, text_sample: str) -> bool:
+    """True when the font's cmap covers every codepoint in ``text_sample``.
+
+    Requires fontTools; when it cannot read the file the answer is False
+    (never silently claim coverage).
+    """
+    if not text_sample:
+        return True
+    try:
+        from fontTools.ttLib import TTFont as FontFile
+
+        font_file = FontFile(path_str, fontNumber=0, lazy=True)
+        best_cmap = font_file.getBestCmap()
+        # whitespace never appears in cmaps; only real glyphs matter
+        return all(ord(ch) in best_cmap for ch in text_sample if not ch.isspace())
+    except Exception:  # noqa: BLE001 - unreadable font == does not cover
+        return False
+
+
+@lru_cache(maxsize=64)
+def file_is_true_type(path_str: str) -> bool:
+    """True when the file is TrueType-flavored (glyph outlines reportlab's
+    TTFont can embed). CFF/PostScript-flavored fonts (.otf, Noto CJK) cannot
+    be embedded by the PDF renderer."""
+    try:
+        from fontTools.ttLib import TTFont as FontFile
+
+        font_file = FontFile(path_str, fontNumber=0, lazy=True)
+        true_type_magic = chr(0) + chr(1) + chr(0) + chr(0)
+        return font_file.sfntVersion == true_type_magic
+    except Exception:  # noqa: BLE001 - unreadable == not embeddable
+        return False
+
+
+@lru_cache(maxsize=64)
+def resolve_font_for_text(family: str, text: str) -> tuple[Path, bool, str | None]:
+    """Like :func:`resolve_font`, but prefers a font covering every glyph.
+
+    Returns ``(path, substituted, reason)``. When the requested font misses
+    glyphs (CJK on a Latin-only install, for instance) the CJK candidate
+    table is searched; ``reason`` explains the substitution for FC007.
+    """
+    path, substituted = resolve_font(family)
+    if not text or file_covers(str(path), text):
+        return path, substituted, ("is not installed" if substituted else None)
+
+    for candidate in _CJK_CANDIDATES:
+        if candidate.exists() and file_covers(str(candidate), text):
+            return candidate, True, "does not cover all glyphs in this figure"
+
+    # nothing better exists on this machine: keep the primary font and let
+    # FC007 warn about the uncovered glyphs
+    return path, True, "does not cover all glyphs in this figure and no CJK font is installed"
+
+
 @lru_cache(maxsize=256)
 def _load_font(path_str: str, size_px: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(path_str, size_px, layout_engine=ImageFont.Layout.BASIC)
@@ -117,16 +187,25 @@ class FontMetrics:
     path: Path  # font file actually used
     substituted: bool  # True if a fallback font was used
     resolved_family: str  # family name from the font file's name table
+    substitution_reason: str | None = None  # why the substitute was picked
 
     @classmethod
-    def for_family(cls, family: str) -> FontMetrics:
-        path, substituted = resolve_font(family)
+    def for_text(cls, family: str, text: str) -> FontMetrics:
+        """Resolve for the given text: picks a glyph-covering font when the
+        requested one cannot render some of it (e.g. CJK labels)."""
+        path, substituted, reason = resolve_font_for_text(family, text)
         return cls(
             family=family,
             path=path,
             substituted=substituted,
             resolved_family=family_of_file(str(path)),
+            substitution_reason=reason,
         )
+
+    @classmethod
+    def for_family(cls, family: str) -> FontMetrics:
+        """Resolve without glyph-coverage considerations (ASCII-only figures)."""
+        return cls.for_text(family, "")
 
     @property
     def is_consistent(self) -> bool:
