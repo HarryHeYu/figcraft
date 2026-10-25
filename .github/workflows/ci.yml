@@ -51,20 +51,25 @@ jobs:
         run: uvx twine check dist/*
 
       - name: Install wheel into a fresh venv
+        shell: bash
         run: |
           uv venv .smoke-venv
-          uv pip install --python .smoke-venv/bin/python dist/*.whl || \
-            uv pip install --python .smoke-venv/Scripts/python.exe dist/*.whl
+          if [ -x .smoke-venv/bin/python ]; then
+            PY=".smoke-venv/bin/python"
+          else
+            PY=".smoke-venv/Scripts/python.exe"
+          fi
+          uv pip install --python "$PY" dist/*.whl
 
       - name: CLI + MCP stdio smoke (installed wheel, foreign directory)
         shell: bash
         run: |
           if [ -x .smoke-venv/bin/papercanvas ]; then
-            PC=".smoke-venv/bin/papercanvas"
-            MCP=".smoke-venv/bin/papercanvas-mcp"
+            PC="$GITHUB_WORKSPACE/.smoke-venv/bin/papercanvas"
+            MCP="$GITHUB_WORKSPACE/.smoke-venv/bin/papercanvas-mcp"
           else
-            PC=".smoke-venv/Scripts/papercanvas.exe"
-            MCP=".smoke-venv/Scripts/papercanvas-mcp.exe"
+            PC="$GITHUB_WORKSPACE/.smoke-venv/Scripts/papercanvas.exe"
+            MCP="$GITHUB_WORKSPACE/.smoke-venv/Scripts/papercanvas-mcp.exe"
           fi
           SMOKE_ROOT="$PWD/.smoke-project"
           mkdir -p "$SMOKE_ROOT"
