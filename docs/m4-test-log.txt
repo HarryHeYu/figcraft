@@ -4,25 +4,26 @@ rootdir: E:\code\figcraft
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.15.1, cov-7.1.0
-collected 241 items
+collected 279 items
 
-tests\test_cli.py .....                                                  [  2%]
-tests\test_cli_m1.py ...................                                 [  9%]
-tests\test_consistency.py ..                                             [ 10%]
-tests\test_docs.py ..                                                    [ 11%]
-tests\test_document.py ..................                                [ 19%]
-tests\test_layout.py ...........                                         [ 23%]
-tests\test_lint.py ..................                                    [ 31%]
-tests\test_mcp.py ......                                                 [ 33%]
-tests\test_mcp_e2e.py .                                                  [ 34%]
-tests\test_mcp_stdio.py ..                                               [ 34%]
-tests\test_patch.py ......................................               [ 50%]
-tests\test_pdf.py .........                                              [ 54%]
-tests\test_pptx.py .............                                         [ 59%]
-tests\test_release_gate.py ..............                                [ 65%]
-tests\test_routing.py ......................                             [ 74%]
-tests\test_schema.py ................................                    [ 87%]
+tests\test_cli.py .....                                                  [  1%]
+tests\test_cli_m1.py ...................                                 [  8%]
+tests\test_consistency.py ..                                             [  9%]
+tests\test_docs.py ..                                                    [ 10%]
+tests\test_document.py ..................                                [ 16%]
+tests\test_layout.py ...........                                         [ 20%]
+tests\test_lint.py ...................                                   [ 27%]
+tests\test_mcp.py ......                                                 [ 29%]
+tests\test_mcp_e2e.py .                                                  [ 29%]
+tests\test_mcp_stdio.py ..                                               [ 30%]
+tests\test_patch.py ......................................               [ 44%]
+tests\test_pdf.py ..........                                             [ 47%]
+tests\test_pptx.py .............                                         [ 52%]
+tests\test_release_gate.py ..............                                [ 57%]
+tests\test_routing.py ..............................................     [ 73%]
+tests\test_schema.py ................................                    [ 85%]
+tests\test_service.py .....s...                                          [ 88%]
 tests\test_svg.py ............                                           [ 92%]
-tests\test_text_layout.py .................                              [100%]
+tests\test_text_layout.py ....................                           [100%]
 
-============================ 241 passed in 22.17s =============================
+======================= 278 passed, 1 skipped in 19.59s =======================
