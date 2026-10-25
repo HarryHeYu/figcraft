@@ -85,12 +85,29 @@ def test_fc005_font_size_below_threshold(figure_dict: dict, layout: TextLayout) 
     assert _ids(findings, "FC005") == []
 
 
-def test_fc006_arrow_through_unrelated_node(figure_dict: dict, layout: TextLayout) -> None:
-    """a -> c routed straight across the middle node b must be flagged."""
+def test_fc006_avoidable_crossing_is_routed_around(figure_dict: dict, layout: TextLayout) -> None:
+    """a -> c straight across the middle node b: obstacle-aware routing
+    detours the edge, so FC006 stays silent — no finding for a problem the
+    renderer does not have."""
     figure_dict["nodes"] = [
         {"id": "a", "x": 10, "y": 20, "w": 20, "h": 10},
         {"id": "b", "x": 45, "y": 20, "w": 20, "h": 10},
         {"id": "c", "x": 80, "y": 20, "w": 20, "h": 10},
+    ]
+    figure_dict["edges"] = [{"id": "e1", "source": "a", "target": "c"}]
+    findings = _lint(Figure.model_validate(figure_dict), layout)
+    assert _ids(findings, "FC006") == []
+
+
+def test_fc006_unavoidable_crossing_warns(figure_dict: dict, layout: TextLayout) -> None:
+    """When detour channels above AND below are blocked, the router keeps the
+    crossing path and FC006 must report it."""
+    figure_dict["nodes"] = [
+        {"id": "a", "x": 10, "y": 20, "w": 20, "h": 10},
+        {"id": "b", "x": 45, "y": 20, "w": 20, "h": 10},
+        {"id": "c", "x": 80, "y": 20, "w": 20, "h": 10},
+        {"id": "wall_top", "x": 38, "y": 8, "w": 34, "h": 8},
+        {"id": "wall_bottom", "x": 38, "y": 34, "w": 34, "h": 8},
     ]
     figure_dict["edges"] = [{"id": "e1", "source": "a", "target": "c"}]
     findings = _lint(Figure.model_validate(figure_dict), layout)
