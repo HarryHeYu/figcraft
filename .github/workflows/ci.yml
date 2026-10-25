@@ -84,4 +84,4 @@ jobs:
           uv run --project "$GITHUB_WORKSPACE" python \
             "$GITHUB_WORKSPACE/docs/rc/stdio_smoke.py" \
             --root "$SMOKE_ROOT" \
-            --executable "$GITHUB_WORKSPACE/$MCP"
+            --executable "$MCP"
