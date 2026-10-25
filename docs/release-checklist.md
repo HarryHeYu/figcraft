@@ -8,7 +8,7 @@
 | 1 | Figure IR 正确验证合法与非法输入 | ✅ | `test_release_gate.py::test_gate_1_*`；完整矩阵 `tests/test_schema.py` |
 | 2 | 同一 IR 导出 SVG/PDF/PPTX | ✅ | `test_gate_2_*`（三个示例逐一构建） |
 | 3 | SVG/PDF 非栅格化；PPTX 框/文本/箭头可编辑 | ✅ | `test_gate_3_*`（无 `<image>`/`/Subtype /Image`/media；有可编辑文本与原生 connector） |
-| 4 | 三示例无严重溢出与误连接 | ✅ | `test_gate_4_*`（FC001–FC008：0 错误 0 警告） |
+| 4 | 三示例无严重溢出与误连接 | ✅ | `test_gate_4_*`（0 错误；警告仅允许 FC007 字体替代——它报告渲染环境而非图形缺陷） |
 | 5 | 单节点改色后其余节点属性不变 | ✅ | `test_gate_5_*`（逐字段比对，只有目标节点变化） |
 | 6 | 错误 Patch 不修改原文件和 revision | ✅ | `test_gate_6_*`；事务语义 `tests/test_patch.py` |
 | 7 | Agent 无人工修改 JSON 完成创建/修改/导出 | ✅ | `tests/test_mcp_e2e.py`（纯 MCP 协议三轮修改）；记录 `docs/m3-e2e-log.md` |
