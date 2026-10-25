@@ -22,27 +22,23 @@ from papercanvas.core.errors import FontError
 MEASUREMENT_SCALE = 64
 
 # Known file locations per lower-cased family name, in priority order.
+# Every file listed here must genuinely carry that family name — files that
+# merely look similar (metric-compatible substitutes such as DejaVu for
+# Arial) belong in _FALLBACKS, otherwise substitution goes unreported.
 _FONT_CANDIDATES: dict[str, tuple[Path, ...]] = {
     "arial": (
         Path("C:/Windows/Fonts/arial.ttf"),
         Path("/System/Library/Fonts/Supplemental/Arial.ttf"),
         Path("/Library/Fonts/Arial.ttf"),
         Path("/usr/share/fonts/truetype/vista/arial.ttf"),
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
-        Path("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
     ),
     "helvetica": (
-        Path("C:/Windows/Fonts/arial.ttf"),
         Path("/System/Library/Fonts/Helvetica.ttc"),
         Path("/System/Library/Fonts/Supplemental/Arial.ttf"),
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
-        Path("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
     ),
     "times new roman": (
         Path("C:/Windows/Fonts/times.ttf"),
         Path("/System/Library/Fonts/Supplemental/Times New Roman.ttf"),
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"),
-        Path("/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf"),
     ),
     "dejavu sans": (
         Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
@@ -51,6 +47,7 @@ _FONT_CANDIDATES: dict[str, tuple[Path, ...]] = {
 }
 
 # Generic fallback when the requested family is unknown on this machine.
+# Anything resolved through this chain is BY DEFINITION a substitution.
 _FALLBACKS: tuple[Path, ...] = (
     Path("C:/Windows/Fonts/arial.ttf"),
     Path("/System/Library/Fonts/Supplemental/Arial.ttf"),
@@ -60,17 +57,30 @@ _FALLBACKS: tuple[Path, ...] = (
 )
 
 
+def _embedded_family_is(path: Path, requested_lower: str) -> bool:
+    """True when the file's embedded family name matches the request.
+
+    Unreadable font files are skipped rather than trusted.
+    """
+    try:
+        return family_of_file(str(path)).lower() == requested_lower
+    except Exception:  # noqa: BLE001 - any parse failure disqualifies the file
+        return False
+
+
 @lru_cache(maxsize=64)
 def resolve_font(family: str) -> tuple[Path, bool]:
     """Map a family name to an existing font file.
 
-    Returns ``(path, substituted)``; ``substituted`` is True when the
-    requested family was not found and a fallback was used (this drives the
-    FC007 lint rule in M2). Raises FontError when nothing usable exists.
+    Returns ``(path, substituted)``. A candidate file counts as the requested
+    family only when its embedded name agrees (case-insensitively); anything
+    reached through the fallback chain is by definition a substitution. This
+    keeps ``substituted`` and :attr:`FontMetrics.is_consistent` in lockstep
+    on every platform. Raises FontError when nothing usable exists.
     """
-    key = family.strip().lower()
-    for candidate in _FONT_CANDIDATES.get(key, ()):
-        if candidate.exists():
+    requested = family.strip().lower()
+    for candidate in _FONT_CANDIDATES.get(requested, ()):
+        if candidate.exists() and _embedded_family_is(candidate, requested):
             return candidate, False
     for candidate in _FALLBACKS:
         if candidate.exists():

@@ -104,13 +104,38 @@ def test_fc006_clean_routing_not_flagged(figure_dict: dict, layout: TextLayout) 
 
 
 def test_fc007_substituted_font_warns(figure_dict: dict, layout: TextLayout) -> None:
-    figure_dict["theme"]["font_family"] = "No Such Font Family 12345"
+    figure_dict["theme"]["font_family"] = "No Such Font 42"
     fig = Figure.model_validate(figure_dict)
     custom = TextLayout(FontMetrics.for_family(fig.theme.font_family))
     assert custom.metrics.substituted
     findings = _lint(fig, custom)
     hits = _ids(findings, "FC007")
     assert hits and hits[0].severity == WARNING
+
+
+def test_fc007_message_names_requested_and_actual_font(figure_dict: dict) -> None:
+    """Real substitutions must produce a finding that names BOTH the family
+    the IR asked for and the font actually used (task: FC007 提示真实替代)."""
+    requested = "No Such Font 42"
+    figure_dict["theme"]["font_family"] = requested
+    fig = Figure.model_validate(figure_dict)
+    custom = TextLayout(FontMetrics.for_family(requested))
+    assert custom.metrics.substituted
+    hit = _ids(_lint(fig, custom), "FC007")[0]
+    assert requested in hit.message
+    assert custom.metrics.resolved_family in hit.message
+
+
+def test_fc007_absent_when_resolution_is_faithful(figure_dict: dict) -> None:
+    """Requesting a family that this machine resolves faithfully must NOT
+    trigger FC007 — on every platform, whatever that family locally is."""
+    probe = FontMetrics.for_family("Arial")
+    family = probe.resolved_family if probe.substituted else "Arial"
+    figure_dict["theme"]["font_family"] = family
+    fig = Figure.model_validate(figure_dict)
+    layout = TextLayout(FontMetrics.for_family(family))
+    assert not layout.metrics.substituted  # self-check: faithful resolution
+    assert _ids(_lint(fig, layout), "FC007") == []
 
 
 def test_fc008_scans_rendered_svg_for_images(figure_dict: dict, layout: TextLayout) -> None:

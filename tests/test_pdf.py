@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import zlib
+from pathlib import Path
 
 import pytest
 
@@ -144,27 +145,50 @@ def test_pdf_group_label_present(laid_out: Figure) -> None:
 def test_pdf_font_registration_is_per_file_not_per_name() -> None:
     """Regression: two families sanitizing to one reportlab name but
     resolving to different font files must each embed their own file."""
-    fig_a = Figure.model_validate(
-        {
-            "schema_version": "0.1",
-            "id": "fa",
-            "canvas": {"width": 80, "height": 40},
-            "theme": {"font_family": "Times New Roman"},
-            "nodes": [{"id": "n", "type": "rect", "label": "Hi", "x": 5, "y": 5, "w": 30, "h": 10}],
-        }
+    from papercanvas.text import text_metrics as tm
+    from papercanvas.text.text_layout import TextLayout
+    from papercanvas.text.text_metrics import FontMetrics
+
+    first_path, _ = tm.resolve_font("Arial")
+    # a second, genuinely different font file available on this machine
+    system_dirs = [
+        Path("C:/Windows/Fonts"),
+        Path("/usr/share/fonts"),
+        Path("/System/Library/Fonts"),
+        Path("/Library/Fonts"),
+    ]
+    second_path = next(
+        (
+            path
+            for directory in system_dirs
+            if directory.exists()
+            for path in sorted(directory.rglob("*.ttf"))
+            if path != first_path
+        ),
+        None,
     )
-    # "Times.New.Roman" is not a known family -> substitutes (arial on Windows)
-    fig_b = Figure.model_validate(
-        {
-            "schema_version": "0.1",
-            "id": "fb",
-            "canvas": {"width": 80, "height": 40},
-            "theme": {"font_family": "Times.New.Roman"},
-            "nodes": [{"id": "n", "type": "rect", "label": "Hi", "x": 5, "y": 5, "w": 30, "h": 10}],
-        }
-    )
-    file_a = _font_file(_render(fig_a))
-    file_b = _font_file(_render(fig_b))
+
+    def layout_for(path) -> TextLayout:
+        return TextLayout(
+            FontMetrics(
+                family="Same Sanitized Name",
+                path=path,
+                substituted=True,
+                resolved_family=tm.family_of_file(str(path)),
+            )
+        )
+
+    ir_payload = {
+        "schema_version": "0.1",
+        "id": "fx",
+        "canvas": {"width": 80, "height": 40},
+        "theme": {"font_family": "Same Sanitized Name"},
+        "nodes": [{"id": "n", "type": "rect", "label": "Hi", "x": 5, "y": 5, "w": 30, "h": 10}],
+    }
+    fig_a = Figure.model_validate(ir_payload)
+    fig_b = Figure.model_validate(ir_payload)
+    file_a = _font_file(render_pdf(fig_a, layout_for(first_path)))
+    file_b = _font_file(render_pdf(fig_b, layout_for(second_path)))
     assert file_a is not None and file_b is not None
     assert file_a != file_b  # two different TTF files actually embedded
 
