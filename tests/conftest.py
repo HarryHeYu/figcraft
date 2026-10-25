@@ -53,7 +53,26 @@ MINIMAL_FIGURE: dict = {
 }
 
 
+def faithful_family() -> str:
+    """A family name this machine resolves WITHOUT substitution.
+
+    Requesting "Arial" on a Linux runner correctly yields an FC007
+    substitution warning (the font genuinely is not there), so tests that
+    expect a lint-clean figure must ask for the locally faithful family.
+    """
+    from papercanvas.text.text_metrics import FontMetrics
+
+    probe = FontMetrics.for_family("Arial")
+    return probe.resolved_family if probe.substituted else probe.family
+
+
 @pytest.fixture
 def figure_dict() -> dict:
-    """A deep copy of a minimal, valid Figure IR dict — mutate freely."""
-    return copy.deepcopy(MINIMAL_FIGURE)
+    """A deep copy of a minimal, valid Figure IR dict — mutate freely.
+
+    The theme font is the locally faithful family so lint-related tests do
+    not depend on which fonts a CI image happens to ship.
+    """
+    payload = copy.deepcopy(MINIMAL_FIGURE)
+    payload["theme"]["font_family"] = faithful_family()
+    return payload
