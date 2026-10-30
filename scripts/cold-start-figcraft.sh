@@ -116,7 +116,7 @@ pass "BOOT CLEAN: no import or module-resolution errors in the boot log (rc=$BOO
 # directly: this is a real subprocess reaching the real papercanvas engine,
 # with no model and no credentials.
 INSTALLED="$PROFILE_DIR/node_modules/dsh-figcraft"
-VOYAGER_PYTHON="$CORE_PYTHON" node --input-type=module -e '
+node --input-type=module -e '
   import { pathToFileURL } from "node:url";
   const installed = process.argv[1];
   const bridge = await import(pathToFileURL(installed + "/dsh-plugin/lib/bridge.js").href);
