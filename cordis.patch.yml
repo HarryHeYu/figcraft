@@ -1,0 +1,8 @@
+# dsh-figcraft bundle patch: insert the plugin row into the profile tree.
+#
+# Same contract as dsh-sessionflow's bundle: installed as a bundle, the plugin
+# row references the package by name (Node resolves the installed code from the
+# profile's node_modules); activation order follows service dependencies.
+- insert:
+    - id: dsh-figcraft
+      name: dsh-figcraft

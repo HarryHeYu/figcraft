@@ -14,6 +14,11 @@ htmlcov/
 *.fig.json.lock
 *.lock.tmp-*
 
+# dsh-figcraft plugin (npm)
+node_modules/
+dsh-plugin/lib/
+*.tsbuildinfo
+
 # Editors / OS
 .vscode/
 .idea/

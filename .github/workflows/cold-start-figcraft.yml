@@ -1,0 +1,155 @@
+name: cold-start-figcraft
+
+# Cold-start verification for the dsh-figcraft plugin: can a new user install
+# it on a machine that has never seen it, and does the install actually load
+# and reach the papercanvas engine?  Deliberately separate from pytest: those
+# prove the engine, this proves the *distribution path* — `dsh plugin add`
+# against a throwaway DSH_HOME, the prepare/allowBuilds gate, the composed
+# profile tree, and a real bridge call into the real CLI.  No model is called,
+# so it runs on every push without credentials.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cold-start-figcraft-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HOST_PNPM: "pnpm@11.22.0"
+  HOST_NODE: "22.22.2"
+  HOST_PYTHON: "3.13"
+
+jobs:
+  linux-cold-start:
+    name: linux cold-start (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # Same channel matrix as dsh-sessionflow: the plugin's peer ranges are
+        # identical, and the prerelease-tuple trap applies to it equally.
+        include:
+          - { install: github, dsh: "0.1.5-rc.3", label: github-015 }
+          - { install: file,   dsh: "0.1.5-rc.3", label: file-015 }
+          - { install: file,   dsh: "0.2.0-rc.2", label: file-020 }
+          - { install: file,   dsh: "0.2.1-rc.5", label: file-0211rc5 }
+          - { install: file,   dsh: "0.2.2-alpha.2", label: file-0222a2 }
+    steps:
+      - name: Check out the plugin repository (engine + plugin)
+        uses: actions/checkout@v4
+        with:
+          path: figcraft
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.HOST_NODE }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.HOST_PYTHON }}
+
+      - name: Install the pinned host toolchain
+        env:
+          HOST_DSH: "@deepseek-ai/dsh@${{ matrix.dsh }}"
+        run: |
+          npm install -g "$HOST_DSH" "$HOST_PNPM"
+          echo "--- pinned versions ---"
+          node --version
+          dsh --version
+          dsh --version | grep -qF "${{ matrix.dsh }}" || {
+            echo "dsh --version did not report ${{ matrix.dsh }}" >&2
+            exit 1
+          }
+
+      - name: Assert the machine is a clean slate
+        run: |
+          set -euo pipefail
+          if [ -e "$HOME/.dsh/profiles" ]; then
+            echo "~/.dsh/profiles already exists — not a clean slate" >&2
+            exit 1
+          fi
+          echo "clean slate: no ~/.dsh/profiles"
+
+      - name: Install the engine from source (the documented path)
+        working-directory: figcraft
+        run: |
+          set -euo pipefail
+          python -m pip install -e .
+          echo "--- papercanvas --version ---"
+          papercanvas --version
+          papercanvas --help | head -5
+
+      - name: Build the plugin (local-checkout path only)
+        if: matrix.install == 'file'
+        working-directory: figcraft
+        run: |
+          set -euo pipefail
+          # The README tells local users to build before adding.  The `github`
+          # job deliberately skips this so the prepare-script path is exercised.
+          npm ci
+          npm run build
+
+      - name: Run the cold-start checks
+        env:
+          COLD_ROOT: ${{ runner.temp }}/cold-${{ matrix.label }}
+        run: |
+          set -euo pipefail
+          SPEC="github:HarryHeYu/figcraft"
+          if [ "${{ matrix.install }}" = "file" ]; then
+            SPEC="file:$GITHUB_WORKSPACE/figcraft"
+          fi
+          echo "install spec: $SPEC"
+          bash figcraft/scripts/cold-start-figcraft.sh "$SPEC" "cold-${{ matrix.label }}"
+
+      - name: Show what was installed
+        if: always()
+        env:
+          COLD_ROOT: ${{ runner.temp }}/cold-${{ matrix.label }}
+        run: |
+          set -uo pipefail
+          P="$COLD_ROOT/dshhome/profiles/cold-${{ matrix.label }}"
+          echo "--- profile dir ---"
+          ls -la "$P" 2>/dev/null || true
+          echo "--- dependency kind ---"
+          node -e 'const j=require(process.argv[1]);console.log(JSON.stringify(j.dependencies??{},null,2))' \
+            "$P/package.json" 2>/dev/null || true
+          echo "--- installed plugin ---"
+          ls -la "$P/node_modules/dsh-figcraft/dsh-plugin/lib" 2>/dev/null || true
+
+      - name: Clean up the scratch root
+        if: always()
+        env:
+          COLD_ROOT: ${{ runner.temp }}/cold-${{ matrix.label }}
+        run: rm -rf "$COLD_ROOT"
+
+  plugin-tests:
+    # The offline suite (bridge mechanics) on Linux.  Integration tests that
+    # need the engine run in the cold-start jobs above.
+    name: dsh-figcraft plugin tests on linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: figcraft
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.HOST_NODE }}
+
+      - name: Build and test
+        working-directory: figcraft
+        run: |
+          npm ci
+          npm run build
+          npm test
+          npm pack --dry-run

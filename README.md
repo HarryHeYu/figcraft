@@ -152,6 +152,30 @@ tests ([tests/test_mcp_e2e.py](tests/test_mcp_e2e.py),
 [tests/test_mcp_stdio.py](tests/test_mcp_stdio.py)); the third-party client
 UIs themselves were not exercised in this project's environment.
 
+## Install as a DSH plugin
+
+PaperCanvas is also a **DeepSeek Harness plugin** — the seven tools surface
+directly inside DSH sessions:
+
+```bash
+dsh plugin --profile <profile> add github:HarryHeYu/figcraft
+```
+
+The plugin is a thin adapter over the `papercanvas` CLI (which must be
+installed — from this repository until the PyPI publication). Verified
+channels, same discipline as [dsh-sessionflow](https://github.com/HarryHeYu/dsh-sessionflow):
+
+| DSH | install resolves | DSH loads it | tool call answered |
+|---|---|---|---|
+| `0.1.5-rc.3` | ✅ | ✅ | ✅ |
+| `0.2.0-rc.2` (`next`) | ✅ | ✅ | ✅ |
+| `0.2.1-rc.5` (`next`) | ✅ | ✅ | ✅ |
+| `0.2.2-alpha.2` (`alpha`) | ✅ | ✅ | ✅ |
+
+Cold-start CI: [cold-start-figcraft](https://github.com/HarryHeYu/figcraft/actions/workflows/cold-start-figcraft.yml) —
+5 matrix rows (install path × DSH channel), each proving install → bundle →
+prepare → profile layer → a real bridge call into the engine.
+
 ## The Figure IR in one minute
 
 Copy-paste this into `quickstart.json` — it validates and renders as-is:
