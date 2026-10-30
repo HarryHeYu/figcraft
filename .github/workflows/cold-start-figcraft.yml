@@ -86,7 +86,6 @@ jobs:
           python -m pip install -e .
           echo "--- papercanvas --version ---"
           papercanvas --version
-          papercanvas --help | head -5
 
       - name: Build the plugin (local-checkout path only)
         if: matrix.install == 'file'
