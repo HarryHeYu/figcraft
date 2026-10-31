@@ -31,9 +31,9 @@ async def smoke(root: Path, executable: str) -> None:
             print("tools:", names)
             assert names == [
                 "papercanvas_create",
+                "papercanvas_doctor",
                 "papercanvas_get",
                 "papercanvas_inspect",
-                "papercanvas_doctor",
                 "papercanvas_layout",
                 "papercanvas_lint",
                 "papercanvas_patch",
