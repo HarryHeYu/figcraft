@@ -1,10 +1,10 @@
 {
   "schema_version": "0.1",
   "id": "basic_pipeline",
-  "revision": 4,
+  "revision": 6,
   "canvas": {
-    "width": 91.53108249240451,
-    "height": 18.0,
+    "width": 89.0,
+    "height": 58.0,
     "unit": "mm",
     "margin": 4.0
   },
@@ -19,7 +19,7 @@
       "id": "input",
       "type": "rounded_rect",
       "label": "Input Video",
-      "x": 4.0,
+      "x": 5.765541246202256,
       "y": 4.0,
       "w": 20.0,
       "h": 10.0,
@@ -34,8 +34,8 @@
       "id": "encoder",
       "type": "rounded_rect",
       "label": "Video Encoder",
-      "x": 34.0,
-      "y": 4.0,
+      "x": 4.0,
+      "y": 24.0,
       "w": 23.53108249240451,
       "h": 10.0,
       "style": {
@@ -49,8 +49,8 @@
       "id": "output",
       "type": "rounded_rect",
       "label": "Prediction",
-      "x": 67.53108249240451,
-      "y": 4.0,
+      "x": 5.765541246202256,
+      "y": 44.0,
       "w": 20.0,
       "h": 10.0,
       "style": {

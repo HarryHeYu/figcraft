@@ -8,11 +8,12 @@ Determinism: pure functions of the IR — no randomness, no wall clock, no
 set/dict iteration order in the output (constraint 6d).
 """
 
+from papercanvas.layout.column import layout_single_column, layout_two_column
 from papercanvas.layout.layered import layout_layered
 from papercanvas.layout.linear import layout_linear
 from papercanvas.layout.sizes import auto_size_nodes, text_layout_for_theme
 
-LAYOUT_PRESETS: tuple[str, ...] = ("linear-h", "linear-v", "layered")
+LAYOUT_PRESETS: tuple[str, ...] = ("linear-h", "linear-v", "layered", "two-column", "single-column")
 
 __all__ = [
     "LAYOUT_PRESETS",
@@ -35,6 +36,10 @@ def run_layout(fig, preset: str):  # -> Figure (untyped here to avoid a cycle)
         result = layout_linear(fig, direction="h")
     elif preset == "linear-v":
         result = layout_linear(fig, direction="v")
+    elif preset == "two-column":
+        result = layout_two_column(fig)
+    elif preset == "single-column":
+        result = layout_single_column(fig)
     else:
         result = layout_layered(fig)
     ensure_valid(result)

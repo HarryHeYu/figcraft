@@ -45,6 +45,7 @@ def test_stdio_entry_point_serves_tools(tmp_path: Path) -> None:
         "papercanvas_create",
         "papercanvas_get",
         "papercanvas_inspect",
+        "papercanvas_doctor",
         "papercanvas_lint",
         "papercanvas_layout",
         "papercanvas_patch",
@@ -56,4 +57,4 @@ def test_stdio_entry_point_serves_tools(tmp_path: Path) -> None:
 def test_build_server_registers_exactly_seven_tools(tmp_path: Path) -> None:
     server = build_server(tmp_path)
     tools = asyncio.run(server.list_tools())
-    assert len(tools) == 7
+    assert len(tools) == 8

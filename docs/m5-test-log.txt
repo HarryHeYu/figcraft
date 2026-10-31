@@ -1,0 +1,31 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.3, pytest-9.1.1, pluggy-1.7.0
+rootdir: E:\code\figcraft
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.15.1, cov-7.1.0
+collected 292 items
+
+tests\test_cli.py .....                                                  [  1%]
+tests\test_cli_m1.py ...................                                 [  8%]
+tests\test_column_layout.py ......                                       [ 10%]
+tests\test_consistency.py ..                                             [ 10%]
+tests\test_docs.py ..                                                    [ 11%]
+tests\test_doctor.py .......                                             [ 14%]
+tests\test_document.py ..................                                [ 20%]
+tests\test_layout.py ...........                                         [ 23%]
+tests\test_lint.py ...................                                   [ 30%]
+tests\test_mcp.py ......                                                 [ 32%]
+tests\test_mcp_e2e.py .                                                  [ 32%]
+tests\test_mcp_stdio.py ..                                               [ 33%]
+tests\test_patch.py ......................................               [ 46%]
+tests\test_pdf.py ..........                                             [ 50%]
+tests\test_pptx.py .............                                         [ 54%]
+tests\test_release_gate.py ..............                                [ 59%]
+tests\test_routing.py ..............................................     [ 75%]
+tests\test_schema.py ................................                    [ 85%]
+tests\test_service.py .....s...                                          [ 89%]
+tests\test_svg.py ............                                           [ 93%]
+tests\test_text_layout.py ....................                           [100%]
+
+======================= 291 passed, 1 skipped in 28.35s =======================

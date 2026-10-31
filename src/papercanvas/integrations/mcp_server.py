@@ -23,6 +23,7 @@ from mcp.server.mcpserver import MCPServer
 
 from papercanvas import __version__
 from papercanvas.core.errors import PaperCanvasError
+from papercanvas.doctor import run_doctor
 from papercanvas.service import (
     ServiceContext,
     create_figure,
@@ -158,6 +159,38 @@ def build_server(root: Path) -> MCPServer:
     )
     def papercanvas_inspect(path: str, object_id: str | None = None) -> dict:
         return guard(inspect_figure)(ctx, path, object_id)
+
+    @server.tool(
+        name="papercanvas_doctor",
+        description=(
+            "Aggregated quality diagnosis: hard validation, FC001-FC008 lint, "
+            "font coverage/substitution, renderability per format. Returns "
+            "findings classified as blocking / advisory / environment, with "
+            "suggested patches for fixable issues. Read-only."
+        ),
+    )
+    def papercanvas_doctor(path: str) -> dict:
+        def doctor_fn() -> dict:
+            from papercanvas.core.document import FigureDocument
+            from papercanvas.render.svg import render_svg
+            from papercanvas.text.text_layout import TextLayout
+            from papercanvas.text.text_metrics import FontMetrics
+
+            doc = FigureDocument.load(ctx.resolve(path), lenient=True)
+            labels = "\n".join(
+                n.label for n in doc.figure.nodes if n.label
+            ) + "\n" + "\n".join(g.label for g in doc.figure.groups if g.label)
+            layout = TextLayout(FontMetrics.for_text(doc.figure.theme.font_family, labels))
+            try:
+                svg_bytes = render_svg(doc.figure, layout)
+            except Exception:
+                svg_bytes = None
+            report = run_doctor(doc.figure, layout, svg_bytes=svg_bytes)
+            result = report.as_dict()
+            result["ok"] = True
+            result["path"] = str(doc.path)
+            return result
+        return guard(doctor_fn)()
 
     return server
 

@@ -27,6 +27,7 @@ def test_list_tools_exposes_the_seven_tools(tmp_path: Path, connected_mcp) -> No
         "papercanvas_render",
         "papercanvas_lint",
         "papercanvas_inspect",
+        "papercanvas_doctor",
     }
 
 

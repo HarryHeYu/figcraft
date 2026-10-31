@@ -17,6 +17,7 @@ from papercanvas.core.errors import (
     FigureValidationError,
     PaperCanvasError,
 )
+from papercanvas.doctor import run_doctor
 from papercanvas.service import (
     ServiceContext,
     create_figure,
@@ -26,6 +27,8 @@ from papercanvas.service import (
     patch_figure,
     render_figure,
 )
+from papercanvas.text.text_layout import TextLayout
+from papercanvas.text.text_metrics import FontMetrics
 
 #: the CLI is a local user tool: no root containment, any path is allowed
 CLI_CONTEXT = ServiceContext(root=Path.cwd(), enforce_root=False)
@@ -47,6 +50,8 @@ class LayoutPreset(StrEnum):
     linear_h = "linear-h"
     linear_v = "linear-v"
     layered = "layered"
+    two_column = "two-column"
+    single_column = "single-column"
 
 
 class RenderFormat(StrEnum):
@@ -329,6 +334,58 @@ def inspect(
     )
     for item in result["objects"]:
         console.print(f"  {item['kind']:>5}  {item['id']}  {item.get('label', '')}")
+
+
+@app.command()
+def doctor(
+    path: Annotated[Path, typer.Argument(help="Figure IR file to diagnose.")],
+    output_format: Annotated[
+        LintOutputFormat, typer.Option("--format", help="Human-readable or JSON output.")
+    ] = LintOutputFormat.text,
+) -> None:
+    """Aggregate quality diagnosis: validation, lint, font, renderability.
+
+    Read-only. Exit code 1 when blocking findings exist."""
+    try:
+        doc = FigureDocument.load(path, lenient=True)
+        labels = "\n".join(
+            n.label for n in doc.figure.nodes if n.label
+        ) + "\n" + "\n".join(g.label for g in doc.figure.groups if g.label)
+        layout = TextLayout(FontMetrics.for_text(doc.figure.theme.font_family, labels))
+        try:
+            from papercanvas.render.svg import render_svg
+
+            svg_bytes = render_svg(doc.figure, layout)
+        except Exception:
+            svg_bytes = None
+        report = run_doctor(doc.figure, layout, svg_bytes=svg_bytes)
+    except (PaperCanvasError, OSError) as exc:
+        _fail(exc)
+        return
+
+    if output_format == LintOutputFormat.json:
+        typer.echo(json.dumps(report.as_dict(), ensure_ascii=False, indent=2))
+    else:
+        level_colors = {"blocking": "red", "advisory": "yellow", "environment": "cyan"}
+        for f in report.findings:
+            color = level_colors.get(f.level, "white")
+            obj = f" [{f.object_id}]" if f.object_id else ""
+            suggestion = ""
+            if f.suggested_patch:
+                suggestion = f"\n  suggested: {json.dumps(f.suggested_patch)}"
+            console.print(
+                f"[{color}]{f.rule_id}[/] [{f.level}]{obj}: {f.message}{suggestion}"
+            )
+        if not report.findings:
+            console.print("[green]healthy[/green] — no findings")
+        s = report.as_dict()["summary"]
+        console.print(
+            f"{s['blocking']} blocking, {s['advisory']} advisory, "
+            f"{s['environment']} environment"
+        )
+
+    if report.blocking_count > 0:
+        raise typer.Exit(EXIT_ERROR)
 
 
 def main() -> None:
